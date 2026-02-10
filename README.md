@@ -1,3 +1,21 @@
+To ensure your machine's python is compatible do the following: (if you dont have python at all download it first, preferably version 3.11.9)
+
+In your cmd prompt run "where py" ((this checks if you have the windows python launcher)) 
+  If you get a valid path, then: 
+    Run "py -3.11 - V" 
+      if this outputs Python 3.11.__ 
+        your good! 
+      if not: 
+        run "winget install -e --id Python.Python.3.11" 
+  If you do not get a valid path, then:
+     run "winget install -e --id Python.Python.3.11" 
+
+  To check, close and reopen cmd prompt and run "where py" then "py -3.11 -V" for verification.
+
+
+
+
+
 General Data Flow:
 1. Extract Discrete data from a Comsol sim for each Electrode
 2. Combine all electrodes raw data into a single data table

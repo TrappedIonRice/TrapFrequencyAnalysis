@@ -2,3 +2,6 @@ Data/**/*.txt
 *.csv
 *.pdf
 \Repts
+.venv/
+venv/
+env/

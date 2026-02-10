@@ -56,6 +56,8 @@ class Simulation(
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.file_path = os.path.join(repo_root, "Data", dataset, "")
 
+
+        # Hi
         self.trapVariables = trapVars
 
         self.total_voltage_df = None
