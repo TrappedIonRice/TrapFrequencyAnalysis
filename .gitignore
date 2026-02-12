@@ -4,4 +4,5 @@ Data/**/*.txt
 \Repts
 .venv/
 venv/
+.venv
 env/

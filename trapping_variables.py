@@ -283,8 +283,8 @@ class Trapping_Vars:
         """
         ea = self.Var_dict[self.dc_key]
         endcap_electrodes = ["DC1", "DC5", "DC6", "DC10", "DC11", "DC15", "DC16", "DC20"]
-        mid_electrodes = ["DC3", "DC8", "DC13", "DC18"]
-        center_electrodes = ["DC2", "DC4", "DC7", "DC9", "DC12", "DC14", "DC17", "DC19"]
+        center_electrodes = ["DC3", "DC8", "DC13", "DC18"]
+        mid_electrodes = ["DC2", "DC4", "DC7", "DC9", "DC12", "DC14", "DC17", "DC19"]
         for el in endcap_electrodes:
             if el in ea.amplitudes:
                 ea.add_amplitude_volt(el, endcaps)

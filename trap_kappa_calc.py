@@ -78,7 +78,7 @@ def get_kappas_from_secularFreqs_amp_rffreq(freq, amp, secular_freqs):
             * math.sqrt(2)
             * (constants.ion_mass / constants.ion_charge)
             * ((2 * math.pi) * freq / (amp))
-            * (0.00025**2)
+            * (0.000125**2)
         )
         out.append(kappa)
     return out
@@ -125,13 +125,13 @@ def compute_kappa_stats_over_grid(
     return stats
 
 print(compute_kappa_stats_over_grid(
-    "InnTrapFine",
+    "1252dTrapRice",
     rf_freq_min=10e6,
     rf_freq_max=60e6,
-    rf_freq_points=3,
+    rf_freq_points=2,
     rf_amp_min=100,
     rf_amp_max=700,
-    rf_amp_points=3,
+    rf_amp_points=2,
 ))
 
 
