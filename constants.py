@@ -29,8 +29,8 @@ import numpy as np
 
 INCLUDE_ALL_RF_PSEUDOPOTENTIALS = False  # False keeps current behavior
 
-#ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
-ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
+ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
+#ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
 # ion_mass = 1.5e-26  # kg be
 ion_charge = 1.60217662 * (10 ** (-19))  # C
 epsilon_0 = 8.854187817e-12  # F/m
@@ -184,7 +184,8 @@ def freq_calcualtion(secondderivative):
     )
 
 
-ion_electrode_dis = 0.00025
+#ion_electrode_dis = 0.00025
+ion_electrode_dis = 0.000125
 
 hbar = 1.0545718e-34  # J*s
 
