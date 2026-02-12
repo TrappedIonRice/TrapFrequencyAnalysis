@@ -1125,7 +1125,6 @@ def main_2():
         "DC10": outer,
         "DC11": inner,
         "DC12": outer,
-        "DC13": 0,
         "RF1": -10,
         "RF2": -10,
     }
@@ -1146,7 +1145,7 @@ def main_2():
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("InnTrapFine", tv)
+    sim = Simulation("Comsol_125", tv)
 
     # Build fits, equilibrium, and single-ion modes
     sim._smoke_test_new_stack(n_ions=1, poly_deg=4)

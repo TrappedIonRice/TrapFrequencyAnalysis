@@ -29,7 +29,7 @@ import numpy as np
 
 INCLUDE_ALL_RF_PSEUDOPOTENTIALS = False  # False keeps current behavior
 
-# ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
+#ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
 ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
 # ion_mass = 1.5e-26  # kg be
 ion_charge = 1.60217662 * (10 ** (-19))  # C
@@ -130,6 +130,17 @@ trap_capcitence_per_electrode_PF = {
     "DC8": 0.0005,
     "DC9": 0.0005,
     "DC10": 0.0005,
+    "DC11": 0.0005,
+    "DC12": 0.0005,
+    "DC13": 0.0005,
+    "DC14": 0.0005,
+    "DC15": 0.0005,
+    "DC16": 0.0005,
+    "DC16": 0.0005,
+    "DC17": 0.0005,
+    "DC18": 0.0005,
+    "DC19": 0.0005,
+    "DC20": 0.0005,
     "RF1": 0.0005,
     "RF2": 0.0005,
 }

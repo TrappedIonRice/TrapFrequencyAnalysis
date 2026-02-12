@@ -353,4 +353,5 @@ def get_set_of_points(dataframe):
 
 if __name__ == "__main__":
     print("running")
-    make_simulation_dataframe(r"Data\twodTrap_1")
+    make_simulation_dataframe(r"Data\Comsol_125")
+    #make_simulation_dataframe(r"Data\twodTrap_1")
