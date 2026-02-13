@@ -140,6 +140,7 @@ print(compute_kappa_stats_over_grid(
 # sim = Simulation("Hyper_2")
 
 # print(calculate_kappa(sim, 42e6, 560))
+
 # print(calculate_kappa(sim, 50e6, 580))
 # print(calculate_kappa(sim, 54e6, 540))
 # print(calculate_kappa(sim, 56e6, 520))
