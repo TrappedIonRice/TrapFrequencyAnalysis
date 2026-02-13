@@ -180,9 +180,25 @@ def extract_raw_trap_sim_data(file_path):
     #     + blade_name
     #     + "_extracted.csv"
     # )
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    out_path = os.path.join(repo_root, "Data", simulation, f"{blade_name}_extracted.csv")
+ # Determine the repo root by finding the folder that contains "Data"
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = current_dir
+    while not os.path.exists(os.path.join(repo_root, "Data")):
+        parent_dir = os.path.dirname(repo_root)
+        if parent_dir == repo_root:
+            raise FileNotFoundError("Could not find 'Data' folder in any parent directory")
+        repo_root = parent_dir
+
+# Construct output path inside Data/<simulation> folder
+    out_dir = os.path.join(repo_root, "Data", simulation)
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{blade_name}_extracted.csv")
+
     df.to_pickle(out_path)
+    print(f"Saved extracted data to {out_path}")
+    #repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    #out_path = os.path.join(repo_root, "Data", simulation, f"{blade_name}_extracted.csv")
+    #df.to_pickle(out_path)
 
     return df
 
@@ -357,5 +373,5 @@ def get_set_of_points(dataframe):
 
 if __name__ == "__main__":
     print("running")
-    make_simulation_dataframe(r"Data\Comsol_3")
+    make_simulation_dataframe(r"Data\Comsol_45_deg_200")
     #make_simulation_dataframe(r"Data\twodTrap_1")
