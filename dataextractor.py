@@ -182,9 +182,6 @@ def extract_raw_trap_sim_data(file_path):
     # )
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     out_path = os.path.join(repo_root, "Data", simulation, f"{blade_name}_extracted.csv")
-    #New line added here ***********************
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    #*********************************
     df.to_pickle(out_path)
 
     return df
@@ -360,5 +357,5 @@ def get_set_of_points(dataframe):
 
 if __name__ == "__main__":
     print("running")
-    make_simulation_dataframe(r"Data\Comsol_125")
+    make_simulation_dataframe(r"Data\Comsol_3")
     #make_simulation_dataframe(r"Data\twodTrap_1")

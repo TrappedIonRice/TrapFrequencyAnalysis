@@ -127,7 +127,7 @@ def compute_kappa_stats_over_grid(
     return stats
 
 print(compute_kappa_stats_over_grid(
-    "Comsol_125",
+    "Comsol_3",
     rf_freq_min=10e6,
     rf_freq_max=60e6,
     rf_freq_points=3,
