@@ -56,8 +56,6 @@ class Simulation(
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.file_path = os.path.join(repo_root, "Data", dataset, "")
 
-
-        # Hi
         self.trapVariables = trapVars
 
         self.total_voltage_df = None
@@ -227,10 +225,22 @@ class Simulation(
                     f"({alpha}) * (({sum_ex})**2 + ({sum_ey})**2 + ({sum_ez})**2)"
                 )
 
-        # final DC + pseudo (unchanged)
+        # # final DC + pseudo (unchanged)
         df["Static_TotalV"] = ne.evaluate(
             f"{sum_v_dc} + ({pseudo_expr})", local_dict=local_dict
         )
+
+        # --- DC only ---
+        # df["Static_TotalV"] = ne.evaluate(
+        #     sum_v_dc,
+        #     local_dict=local_dict
+        # )
+
+        #--- RF only (pseudopotential) ---
+        # df["Static_TotalV"] = ne.evaluate(
+        #     pseudo_expr,
+        #     local_dict=local_dict
+        # )
 
         # ---------- per-drive totals (scalar only, no pseudo) ----------
 
@@ -489,6 +499,16 @@ class Simulation(
             "DC8",
             "DC9",
             "DC10",
+            "DC11",
+            "DC12",
+            "DC13",
+            "DC14",
+            "DC15",
+            "DC16",
+            "DC17",
+            "DC18",
+            "DC19",
+            "DC20",
         ]:
             evaluation_final += (
                 electro
@@ -537,7 +557,6 @@ class Simulation(
         evaluation_final += evaluation_pseudo_part
 
         # print("evaluation_final: ", evaluation_final)
-
         self.total_voltage_df["TotalV"] = ne.evaluate(
             evaluation_final,
             local_dict={
@@ -553,6 +572,17 @@ class Simulation(
                 "DC8_V": self.total_voltage_df["DC8_V"],
                 "DC9_V": self.total_voltage_df["DC9_V"],
                 "DC10_V": self.total_voltage_df["DC10_V"],
+                "DC11_V": self.total_voltage_df["DC11_V"],
+                "DC12_V": self.total_voltage_df["DC12_V"],
+                "DC13_V": self.total_voltage_df["DC13_V"],
+                "DC14_V": self.total_voltage_df["DC14_V"],
+                "DC15_V": self.total_voltage_df["DC15_V"],
+                "DC16_V": self.total_voltage_df["DC16_V"],
+                "DC17_V": self.total_voltage_df["DC17_V"],
+                "DC18_V": self.total_voltage_df["DC18_V"],
+                "DC19_V": self.total_voltage_df["DC19_V"],
+                "DC20_V": self.total_voltage_df["DC20_V"],
+
                 "RF1_Ex": self.total_voltage_df["RF1_Ex"],
                 "RF2_Ex": self.total_voltage_df["RF2_Ex"],
                 "DC1_Ex": self.total_voltage_df["DC1_Ex"],
@@ -565,6 +595,17 @@ class Simulation(
                 "DC8_Ex": self.total_voltage_df["DC8_Ex"],
                 "DC9_Ex": self.total_voltage_df["DC9_Ex"],
                 "DC10_Ex": self.total_voltage_df["DC10_Ex"],
+                "DC11_Ex": self.total_voltage_df["DC11_Ex"],
+                "DC12_Ex": self.total_voltage_df["DC12_Ex"],
+                "DC13_Ex": self.total_voltage_df["DC13_Ex"],
+                "DC14_Ex": self.total_voltage_df["DC14_Ex"],
+                "DC15_Ex": self.total_voltage_df["DC15_Ex"],
+                "DC16_Ex": self.total_voltage_df["DC16_Ex"],
+                "DC17_Ex": self.total_voltage_df["DC17_Ex"],
+                "DC18_Ex": self.total_voltage_df["DC18_Ex"],
+                "DC19_Ex": self.total_voltage_df["DC19_Ex"],
+                "DC20_Ex": self.total_voltage_df["DC20_Ex"],
+
                 "RF1_Ey": self.total_voltage_df["RF1_Ey"],
                 "RF2_Ey": self.total_voltage_df["RF2_Ey"],
                 "DC1_Ey": self.total_voltage_df["DC1_Ey"],
@@ -577,6 +618,17 @@ class Simulation(
                 "DC8_Ey": self.total_voltage_df["DC8_Ey"],
                 "DC9_Ey": self.total_voltage_df["DC9_Ey"],
                 "DC10_Ey": self.total_voltage_df["DC10_Ey"],
+                "DC11_Ey": self.total_voltage_df["DC11_Ey"],
+                "DC12_Ey": self.total_voltage_df["DC12_Ey"],
+                "DC13_Ey": self.total_voltage_df["DC13_Ey"],
+                "DC14_Ey": self.total_voltage_df["DC14_Ey"],
+                "DC15_Ey": self.total_voltage_df["DC15_Ey"],
+                "DC16_Ey": self.total_voltage_df["DC16_Ey"],
+                "DC17_Ey": self.total_voltage_df["DC17_Ey"],
+                "DC18_Ey": self.total_voltage_df["DC18_Ey"],
+                "DC19_Ey": self.total_voltage_df["DC19_Ey"],
+                "DC20_Ey": self.total_voltage_df["DC20_Ey"],
+
                 "RF1_Ez": self.total_voltage_df["RF1_Ez"],
                 "RF2_Ez": self.total_voltage_df["RF2_Ez"],
                 "DC1_Ez": self.total_voltage_df["DC1_Ez"],
@@ -589,8 +641,18 @@ class Simulation(
                 "DC8_Ez": self.total_voltage_df["DC8_Ez"],
                 "DC9_Ez": self.total_voltage_df["DC9_Ez"],
                 "DC10_Ez": self.total_voltage_df["DC10_Ez"],
-            },
-        )
+                "DC11_Ez": self.total_voltage_df["DC11_Ez"],
+                "DC12_Ez": self.total_voltage_df["DC12_Ez"],
+                "DC13_Ez": self.total_voltage_df["DC13_Ez"],
+                "DC14_Ez": self.total_voltage_df["DC14_Ez"],
+                "DC15_Ez": self.total_voltage_df["DC15_Ez"],
+                "DC16_Ez": self.total_voltage_df["DC16_Ez"],
+                "DC17_Ez": self.total_voltage_df["DC17_Ez"],
+                "DC18_Ez": self.total_voltage_df["DC18_Ez"],
+                "DC19_Ez": self.total_voltage_df["DC19_Ez"],
+                "DC20_Ez": self.total_voltage_df["DC20_Ez"],
+    },
+)
 
         return
 
@@ -1107,47 +1169,75 @@ def main_2():
 
     # RF drive setup
     rf_freq_hz = (43) * 10**6
-    rf_amp_rf1 = 515
-    rf_amp_rf2 = 515
+    rf_amp_rf1 = 570
+    rf_amp_rf2 = 570
     tv.add_driving("RF", rf_freq_hz, 0.0, {"RF1": rf_amp_rf1, "RF2": rf_amp_rf2})
-    x = 14
-    outer = 24 - x
-    inner = 13 - x
+    #x = 0
+    of = 0
+    outer = 130 #Endcaps
+    inner = 30 #Midcaps
+    center = 30 #Centercaps
     # DC electrode offsets (v)
+
+    # #For Innsbruck trap:
+
+    # dc_offsets = {
+    #     "DC1": outer,
+    #     "DC2": center,
+    #     "DC3": outer,
+    #     "DC4": outer,
+    #     "DC5": center,
+    #     "DC6": outer,
+    #     "DC7": outer,
+    #     "DC8": center,
+    #     "DC9": outer,
+    #     "DC10": outer,
+    #     "DC11": center,
+    #     "DC12": outer,
+    #     "RF1": 0,
+    #     "RF2": 0,
+    # }
+
+    #For Roman`s traps:
+
     dc_offsets = {
         "DC1": outer,
         "DC2": inner,
-        "DC3": outer,
-        "DC4": outer,
-        "DC5": inner,
+        "DC3": center,
+        "DC4": inner,
+        "DC5": outer,
         "DC6": outer,
-        "DC7": outer,
-        "DC8": inner,
-        "DC9": outer,
+        "DC7": inner,
+        "DC8": center,
+        "DC9": inner,
         "DC10": outer,
-        "DC11": inner,
-        "DC12": outer,
-        "RF1": -10,
-        "RF2": -10,
+        "DC11": outer,
+        "DC12": inner,
+        "DC13": center,
+        "DC14": inner,
+        "DC15": outer,
+        "DC16": outer,
+        "DC17": inner,
+        "DC18": center,
+        "DC19": inner,
+        "DC20": outer,
+        "RF1": 23,
+        "RF2": 23,
     }
 
-    # dc_offsets = {
-    #     "DC1": 2.0,
-    #     "DC2": 1.0,
-    #     "DC3": 0.0,
-    #     "DC4": 1.0,
-    #     "DC5": 2.0,
-    #     "DC6": 2.0,
-    #     "DC7": 1.0,
-    #     "DC8": 0.0,
-    #     "DC9": 1.0,
-    #     "DC10": 2.0,
-    # }
 
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("Comsol_125", tv)
+    sim = Simulation("2D_V4_3_125_blades_only_Original_trap", tv)
+
+# 2D trap V4.4.125 - a - 45deg 150um ground
+# 2D trap V4.4.125 - a - 90deg 150um ground
+# 2D trap V4.4.125 - b - 90deg 350um ground
+# 2D_Innsbruck_Charles
+# 2D_Innsbruck_Evan
+# 2D_V4_3_125_blades_only_Original_trap
+# 2D trap V4.4.125 - b - 60deg 350um ground
 
     # Build fits, equilibrium, and single-ion modes
     sim._smoke_test_new_stack(n_ions=1, poly_deg=4)
@@ -1303,7 +1393,7 @@ def main_3():
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("InnTrapFine", tv)
+    sim = Simulation("Test_Evan_Innsbruck", tv)
 
     Y, Z, E, x0 = sim.get_yz_plane_E_magnitude(
         span_um=30.0,
@@ -1353,7 +1443,7 @@ def main_1():
     # test_sim = Simulation("Hyper_2", tv)
     # test_sim = Simulation("NISTMock", tv)
     # test_sim = Simulation("Simp58_101", tv)
-    test_sim = Simulation("twodTrap_1", tv)
+    test_sim = Simulation("Test_Evan_Innsbruck", tv)
 
     numionss = 8
     

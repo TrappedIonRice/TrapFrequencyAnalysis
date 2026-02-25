@@ -144,7 +144,6 @@ class Trapping_Vars:
     # --- Public API: add drives / set amps (now with pickoff refresh) --------
 
     def add_driving(
-        
         self,
         label: str,
         freq: float,

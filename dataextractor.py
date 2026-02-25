@@ -373,5 +373,5 @@ def get_set_of_points(dataframe):
 
 if __name__ == "__main__":
     print("running")
-    make_simulation_dataframe(r"Data\Comsol_45_deg_200_no_floating_gnd")
+    make_simulation_dataframe(r"Data\2D trap V4.4.125 - b - 60deg 350um ground")
     #make_simulation_dataframe(r"Data\twodTrap_1")
