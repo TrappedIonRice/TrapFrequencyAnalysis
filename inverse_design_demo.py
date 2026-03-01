@@ -24,6 +24,12 @@ def run_demo() -> None:
     trap_name = "InnTrapFine"
     dc_electrodes = [f"DC{i}" for i in range(1, 13)]
 
+    u_bounds = (
+    [(-10, 10)] * 12 +    # DC1..DC12
+    [(-30, 30)] * 2 +         # RF1_DC, RF2_DC
+    [(0, 1000000)]             # rf2
+)
+
     out = solve_u_for_targets(
         r0=r0,
         freqs=freqs,
@@ -37,9 +43,10 @@ def run_demo() -> None:
         rf_freq_hz=43e6,
         num_samples=20,
         polyfit_deg=4,
-        objective="weighted_l2",
+        objective="l2",
         rf2_penalty_scale=1e-6,
-        enforce_bounds=False,
+        enforce_bounds=True,
+        u_bounds=u_bounds,
     )
 
     np.set_printoptions(precision=6, suppress=True)
@@ -55,6 +62,7 @@ def run_demo() -> None:
     u = out["u"]
     tv = _build_trapping_vars_from_u(
         dc_electrodes=dc_electrodes,
+        rf_dc_electrodes=["RF1", "RF2"],
         u=u,
         rf_freq_hz=43e6,
     )

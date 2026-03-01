@@ -27,6 +27,7 @@ def _normalize_bounds(bounds, n: int) -> List[Tuple[float, float]]:
 def _generate_input_points(
     num_samples: int,
     dc_bounds: List[Tuple[float, float]],
+    rf_dc_bounds: List[Tuple[float, float]],
     rf2_bounds: Tuple[float, float],
     seed: int = 0,
     include_axes: bool = True,
@@ -38,28 +39,37 @@ def _generate_input_points(
     """
     rng = np.random.default_rng(seed)
     k = len(dc_bounds)
+    k_rf = len(rf_dc_bounds)
 
     samples = []
     if include_zero:
-        samples.append(np.zeros(k + 1, dtype=float))
+        samples.append(np.zeros(k + k_rf + 1, dtype=float))
 
     if include_axes:
         for i in range(k):
             lo, hi = dc_bounds[i]
-            samples.append(_unit_with_value(k + 1, i, lo))
-            samples.append(_unit_with_value(k + 1, i, hi))
+            samples.append(_unit_with_value(k + k_rf + 1, i, lo))
+            samples.append(_unit_with_value(k + k_rf + 1, i, hi))
+        for i in range(k_rf):
+            lo, hi = rf_dc_bounds[i]
+            idx = k + i
+            samples.append(_unit_with_value(k + k_rf + 1, idx, lo))
+            samples.append(_unit_with_value(k + k_rf + 1, idx, hi))
         # rf^2 axis
-        samples.append(_unit_with_value(k + 1, k, rf2_bounds[0]))
-        samples.append(_unit_with_value(k + 1, k, rf2_bounds[1]))
+        samples.append(_unit_with_value(k + k_rf + 1, k + k_rf, rf2_bounds[0]))
+        samples.append(_unit_with_value(k + k_rf + 1, k + k_rf, rf2_bounds[1]))
 
     # randoms
     n_rand = max(0, num_samples - len(samples))
     if n_rand > 0:
         dc_lo = np.array([b[0] for b in dc_bounds], dtype=float)
         dc_hi = np.array([b[1] for b in dc_bounds], dtype=float)
+        rf_dc_lo = np.array([b[0] for b in rf_dc_bounds], dtype=float)
+        rf_dc_hi = np.array([b[1] for b in rf_dc_bounds], dtype=float)
         dc_rand = rng.uniform(dc_lo, dc_hi, size=(n_rand, k))
+        rf_dc_rand = rng.uniform(rf_dc_lo, rf_dc_hi, size=(n_rand, k_rf))
         rf2_rand = rng.uniform(rf2_bounds[0], rf2_bounds[1], size=(n_rand, 1))
-        rand = np.hstack([dc_rand, rf2_rand])
+        rand = np.hstack([dc_rand, rf_dc_rand, rf2_rand])
         samples.extend(list(rand))
 
     return np.asarray(samples, dtype=float)
@@ -73,6 +83,7 @@ def _unit_with_value(n: int, idx: int, val: float) -> np.ndarray:
 
 def _build_trapping_vars_from_u(
     dc_electrodes: List[str],
+    rf_dc_electrodes: List[str],
     u: np.ndarray,
     rf_freq_hz: float,
     rf_electrodes: Tuple[str, str] = ("RF1", "RF2"),
@@ -82,12 +93,16 @@ def _build_trapping_vars_from_u(
     RF amplitude is sqrt(V_rf^2) applied symmetrically to rf_electrodes.
     """
     k = len(dc_electrodes)
-    if u.shape[0] != k + 1:
-        raise ValueError("u must have length K+1 (DC electrodes + V_rf^2)")
+    k_rf = len(rf_dc_electrodes)
+    if u.shape[0] != k + k_rf + 1:
+        raise ValueError("u must have length K + K_rf_dc + 1")
 
     tv = Trapping_Vars()
     # DC electrodes
     for el, v in zip(dc_electrodes, u[:k]):
+        tv.set_amp(tv.dc_key, el, float(v))
+    # DC on RF electrodes
+    for el, v in zip(rf_dc_electrodes, u[k : k + k_rf]):
         tv.set_amp(tv.dc_key, el, float(v))
 
     # RF drive
@@ -104,7 +119,9 @@ def build_voltage_to_c_matrix(
     dc_electrodes: List[str],
     rf_freq_hz: float,
     num_samples: int,
+    rf_dc_electrodes: List[str] = ("RF1", "RF2"),
     dc_bounds: Iterable[Tuple[float, float]] = (-500.0, 500.0),
+    rf_dc_bounds: Iterable[Tuple[float, float]] = (-50.0, 50.0),
     rf2_bounds: Tuple[float, float] = (0.0, 5000.0**2),
     polyfit_deg: int = 4,
     seed: int = 0,
@@ -121,15 +138,17 @@ def build_voltage_to_c_matrix(
     - Solve least squares for A.
 
     Returns dict with:
-      - A: (M x (K+1)) matrix mapping u -> c
+      - A: (M x (K+K_rf+1)) matrix mapping u -> c
       - powers: (M x 3) monomial powers for c ordering
-      - samples_u: (N x (K+1)) input samples
+      - samples_u: (N x (K+K_rf+1)) input samples
       - samples_c: (N x M) output coefficients
     """
     dc_bounds_list = _normalize_bounds(dc_bounds, len(dc_electrodes))
+    rf_dc_bounds_list = _normalize_bounds(rf_dc_bounds, len(rf_dc_electrodes))
     u_samples = _generate_input_points(
         num_samples=num_samples,
         dc_bounds=dc_bounds_list,
+        rf_dc_bounds=rf_dc_bounds_list,
         rf2_bounds=rf2_bounds,
         seed=seed,
     )
@@ -144,6 +163,7 @@ def build_voltage_to_c_matrix(
         print(f"point {i}")
         tv = _build_trapping_vars_from_u(
             dc_electrodes=dc_electrodes,
+            rf_dc_electrodes=rf_dc_electrodes,
             u=u,
             rf_freq_hz=rf_freq_hz,
         )
@@ -158,7 +178,7 @@ def build_voltage_to_c_matrix(
     C = np.asarray(c_samples, dtype=float)  # (N x M)
     U = np.asarray(u_samples, dtype=float)  # (N x K+1)
 
-    # Solve U @ X = C for X (K+1 x M) => A = X.T (M x K+1)
+    # Solve U @ X = C for X ((K+K_rf+1) x M) => A = X.T (M x (K+K_rf+1))
     X, residuals, rank, svals = np.linalg.lstsq(U, C, rcond=None)
     A = X.T
 
@@ -194,6 +214,12 @@ def build_voltage_to_c_matrix(
         "powers": powers_ref,
         "samples_u": U,
         "samples_c": C,
+        "rf_dc_electrodes": list(rf_dc_electrodes),
+        "u_layout": {
+            "dc": (0, len(dc_electrodes)),
+            "rf_dc": (len(dc_electrodes), len(dc_electrodes) + len(rf_dc_electrodes)),
+            "rf2": (len(dc_electrodes) + len(rf_dc_electrodes), len(dc_electrodes) + len(rf_dc_electrodes) + 1),
+        },
         # "fit_rmse": rmse,
         "fit_rel_rmse": rel_rmse,
         # "fit_residuals": residuals,

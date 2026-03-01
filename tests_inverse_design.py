@@ -21,7 +21,9 @@ def test_solve_l2_identity_A():
         dtype=int,
     )
     M = powers.shape[0]
-    A = np.eye(M, dtype=float)
+    n_u = M + 1
+    A = np.zeros((M, n_u), dtype=float)
+    A[:, :M] = np.eye(M, dtype=float)
 
     def fake_builder(**kwargs):
         return {"A": A, "powers": powers}
@@ -42,14 +44,15 @@ def test_solve_l2_identity_A():
             freqs_in_hz=True,
             trap_name="T",
             dc_electrodes=["DC1"],
+            rf_dc_electrodes=["RF1"],
             rf_freq_hz=1.0,
             num_samples=2,
             objective="l2",
             enforce_bounds=False,
-            u_bounds=[(-1.0, 1.0)] * M,
+            u_bounds=[(-1.0, 1.0)] * n_u,
         )
         u = out["u"]
-        # With A=I, u is the coefficient vector. Check L u == b.
+        # With A=[I 0], first M entries are the coefficient vector.
         np.testing.assert_allclose(out["M"] @ u, out["b"], rtol=0, atol=1e-9)
     finally:
         idesign.build_voltage_to_c_matrix = orig
@@ -71,7 +74,9 @@ def test_min_norm_matches_closed_form():
     )
     M = powers.shape[0]
     K = 4
-    A = rng.standard_normal((M, K))
+    K_rf = 2
+    n_u = K + K_rf + 1
+    A = rng.standard_normal((M, n_u))
     r0 = np.array([0.1, -0.2, 0.05], dtype=float)
     freqs = np.array([1.0, 1.2, 0.8], dtype=float)
     R = np.eye(3)
@@ -100,13 +105,13 @@ def test_min_norm_matches_closed_form():
             freqs_in_hz=False,
             trap_name="T",
             dc_electrodes=["DC1"],
+            rf_dc_electrodes=["RF1", "RF2"],
             rf_freq_hz=1.0,
             num_samples=2,
             objective="l2",
             enforce_bounds=False,
-            u_bounds=[(-1.0, 1.0)] * K,
+            u_bounds=[(-1.0, 1.0)] * n_u,
         )
         np.testing.assert_allclose(out["u"], u_star, rtol=0, atol=1e-9)
     finally:
         idesign.build_voltage_to_c_matrix = orig
-
