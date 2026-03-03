@@ -1,7 +1,8 @@
 import numpy as np
 import constants
+import pytest
 
-from control_constraints import build_L_b_for_point
+from control_constraints import build_L_b_for_point, rotation_from_axis_ref_alpha
 
 
 def test_quadratic_hessian_matches():
@@ -73,3 +74,28 @@ def test_hessian_vech_ordering():
     vech = L @ coeffs_nd
     expected = np.array([0.0, 0.0, 0.0, d * (L0 ** 2), 0.0, 0.0], dtype=float)
     np.testing.assert_allclose(vech, expected, rtol=0, atol=1e-12)
+
+
+def test_rotation_alpha_sign_convention():
+    axis = np.array([1.0, 0.0, 0.0])
+    ref = np.array([0.0, 1.0, 0.0])
+    R = rotation_from_axis_ref_alpha(axis, ref, 90.0)
+    e1, e2, e3 = R[:, 0], R[:, 1], R[:, 2]
+    np.testing.assert_allclose(e1, np.array([1.0, 0.0, 0.0]), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(e2, np.array([0.0, 0.0, 1.0]), rtol=0, atol=1e-12)
+    np.testing.assert_allclose(e3, np.array([0.0, -1.0, 0.0]), rtol=0, atol=1e-12)
+
+
+def test_rotation_degenerate_ref_raises():
+    axis = np.array([0.0, 0.0, 1.0])
+    ref = np.array([0.0, 0.0, 2.0])
+    with pytest.raises(ValueError):
+        rotation_from_axis_ref_alpha(axis, ref, 0.0)
+
+
+def test_rotation_axis_warning(capsys):
+    axis = np.array([2.0, 0.0, 0.0])  # norm 2 -> warn
+    ref = np.array([0.0, 1.0, 0.0])
+    rotation_from_axis_ref_alpha(axis, ref, 0.0)
+    captured = capsys.readouterr()
+    assert "Warning" in captured.out

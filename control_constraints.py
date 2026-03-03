@@ -8,8 +8,12 @@ Example
     # Given: polynomial powers (M x 3) and voltage-to-c mapping A (M x K)
     r0 = np.array([0.0, 0.0, 0.0])
     freqs = np.array([2*np.pi*1e6, 2*np.pi*1.2e6, 2*np.pi*0.8e6])  # rad/s
-    R = np.eye(3)
-    Kstar = build_target_hessian(freqs, R, mass=m, charge=q, poly_is_potential_energy=False)
+    principal_axis = [1.0, 0.0, 0.0]
+    ref_dir = [0.0, 1.0, 0.0]
+    alpha_deg = 0.0
+    Kstar = build_target_hessian(
+        freqs, principal_axis, ref_dir, alpha_deg, mass=m, charge=q, poly_is_potential_energy=False
+    )
     L, b = build_L_b_for_point(powers, r0, Kstar)
 
     # Solve for control voltages u given c = A @ u and constraints L @ c = b
@@ -27,7 +31,9 @@ import constants
 
 def build_target_hessian(
     freqs_hz_or_rad: Sequence[float],
-    principal_dirs: Sequence[Sequence[float]] | np.ndarray,
+    principal_axis: Sequence[float],
+    ref_dir: Sequence[float],
+    alpha_deg: float,
     mass: float,
     charge: float | None = None,
     poly_is_potential_energy: bool = True,
@@ -47,7 +53,7 @@ def build_target_hessian(
     if freqs_in_hz:
         freqs = 2.0 * np.pi * freqs
 
-    R = _as_rotation_matrix(principal_dirs)
+    R = rotation_from_axis_ref_alpha(principal_axis, ref_dir, alpha_deg)
     omega2 = freqs ** 2
     diag = np.diag(omega2)
 
@@ -114,23 +120,37 @@ def build_L_b_for_point(
     return L, b
 
 
-def _as_rotation_matrix(principal_dirs: Sequence[Sequence[float]] | np.ndarray) -> np.ndarray:
-    """Return a 3x3 rotation matrix with orthonormal columns."""
-    arr = np.asarray(principal_dirs, dtype=float)
-    if arr.shape == (3, 3):
-        mat = arr
-    else:
-        if len(arr) != 3:
-            raise ValueError("principal_dirs must be 3x3 or a list of three vectors")
-        mat = np.column_stack(arr)
-        if mat.shape != (3, 3):
-            raise ValueError("principal_dirs vectors must be length 3")
+def rotation_from_axis_ref_alpha(
+    principal_axis: Sequence[float],
+    ref_dir: Sequence[float],
+    alpha_deg: float,
+) -> np.ndarray:
+    """Construct rotation matrix from axis, reference direction, and alpha (deg)."""
+    a = np.asarray(principal_axis, dtype=float).reshape(3)
+    na = float(np.linalg.norm(a))
+    if na == 0.0:
+        raise ValueError("principal_axis must be nonzero")
+    if abs(na - 1.0) > 0.05:
+        print("Warning: principal_axis not unit length; normalizing.")
+    e1 = a / na
 
-    # Orthonormalize for safety
-    q, _ = np.linalg.qr(mat)
-    if np.linalg.det(q) < 0:
-        q[:, 2] *= -1.0
-    return q
+    r = np.asarray(ref_dir, dtype=float).reshape(3)
+    r_perp = r - float(np.dot(r, e1)) * e1
+    nr = float(np.linalg.norm(r_perp))
+    if nr < 1e-12:
+        raise ValueError("ref_dir nearly parallel to principal_axis; cannot define transverse axes.")
+    e2_0 = r_perp / nr
+    e3_0 = np.cross(e1, e2_0)
+
+    alpha_rad = np.deg2rad(alpha_deg % 360.0)
+    ca, sa = float(np.cos(alpha_rad)), float(np.sin(alpha_rad))
+    e2 = ca * e2_0 + sa * e3_0
+    e3 = np.cross(e1, e2)
+    e3n = float(np.linalg.norm(e3))
+    if e3n > 0:
+        e3 = e3 / e3n
+
+    return np.column_stack([e1, e2, e3])
 
 
 def _vech_symmetric(M3: np.ndarray) -> np.ndarray:
@@ -220,13 +240,17 @@ if __name__ == "__main__":
 
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
     freqs = np.array([2 * np.pi * 1e6, 2 * np.pi * 1.2e6, 2 * np.pi * 0.8e6])
-    principal_dirs = [[.5,.1,.7],[1,0,0],[.3,.3,.3]]
+    principal_axis = [1.0, 0.0, 0.0]
+    ref_dir = [0.0, 1.0, 0.0]
+    alpha_deg = 0.0
     mass = 6.64e-26  # example: 40Ca+ in kg
     charge = 1.602176634e-19  # elementary charge in C
 
     Kstar = build_target_hessian(
         freqs,
-        principal_dirs,
+        principal_axis,
+        ref_dir,
+        alpha_deg,
         mass=mass,
         charge=charge,
         poly_is_potential_energy=False,

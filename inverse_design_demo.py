@@ -20,9 +20,11 @@ def run_demo() -> None:
     # Target specification (hard-coded demo values)
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
     freqs = np.array(
-        [0.360e6, 2.210e6, 2.320e6], dtype=float
+        [0.360e6, 1.910e6, 2.320e6], dtype=float
     )  # Hz
-    principal_dirs = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    principal_axis = [1.0, 0.0, 0.0]
+    ref_dir = [0.0, 1.0, 0.0]
+    alpha_deg =30
 
     # Trap/fit configuration for InnTrapFine
     trap_name = "Simp58_101"
@@ -40,7 +42,9 @@ def run_demo() -> None:
     out = solve_u_for_targets(
         r0=r0,
         freqs=freqs,
-        principal_dirs=principal_dirs,
+        principal_axis=principal_axis,
+        ref_dir=ref_dir,
+        alpha_deg=alpha_deg,
         ion_mass_kg=constants.ion_mass,  # example: 40Ca+ in kg
         ion_charge_c=1.602176634e-19,
         poly_is_potential_energy=False,
@@ -74,6 +78,7 @@ def run_demo() -> None:
     # Run simulation with the found u to inspect principal directions and freqs
     u = out["u"]
     s = float(out["u_s"])
+    # s = V_rf^2 / omega_mhz^2 with omega_mhz = (2*pi*f_rf_hz)/1e6, so rf_amp is in volts.
     rf_amp = float(np.sqrt(max(s, 0.0)) * constants.RF_OMEGA_REF_MHZ)
     print("rfamp: ", rf_amp)
     print("rf_freq_hz: ", rf_freq_hz)

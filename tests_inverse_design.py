@@ -39,11 +39,12 @@ def test_solve_l2_identity_A():
     try:
         r0 = np.array([0.0, 0.0, 0.0], dtype=float)
         freqs = np.array([1e6, 1.2e6, 0.8e6], dtype=float)
-        R = np.eye(3)
         out = idesign.solve_u_for_targets(
             r0=r0,
             freqs=freqs,
-            principal_dirs=R,
+            principal_axis=np.array([1.0, 0.0, 0.0]),
+            ref_dir=np.array([0.0, 1.0, 0.0]),
+            alpha_deg=0.0,
             ion_mass_kg=1.0,
             ion_charge_c=1.0,
             poly_is_potential_energy=False,
@@ -88,8 +89,15 @@ def test_min_norm_matches_closed_form():
     A = scale[:, None] * A_phys
     r0 = np.array([0.1, -0.2, 0.05], dtype=float)
     freqs = np.array([1.0, 1.2, 0.8], dtype=float)
-    R = np.eye(3)
-    Kstar = build_target_hessian(freqs, R, mass=1.0, charge=1.0, poly_is_potential_energy=False)
+    Kstar = build_target_hessian(
+        freqs,
+        principal_axis=np.array([1.0, 0.0, 0.0]),
+        ref_dir=np.array([0.0, 1.0, 0.0]),
+        alpha_deg=0.0,
+        mass=1.0,
+        charge=1.0,
+        poly_is_potential_energy=False,
+    )
     L, b = build_L_b_for_point(powers, r0, Kstar, include_gradient=True)
     Mmat = L @ A
 
@@ -107,7 +115,9 @@ def test_min_norm_matches_closed_form():
         out = idesign.solve_u_for_targets(
             r0=r0,
             freqs=freqs,
-            principal_dirs=R,
+            principal_axis=np.array([1.0, 0.0, 0.0]),
+            ref_dir=np.array([0.0, 1.0, 0.0]),
+            alpha_deg=0.0,
             ion_mass_kg=1.0,
             ion_charge_c=1.0,
             poly_is_potential_energy=False,
@@ -139,7 +149,9 @@ def test_unbounded_infeasible_returns_best_effort():
         out = idesign.solve_u_for_targets(
             r0=np.array([0.0, 0.0, 0.0]),
             freqs=np.array([1.0, 1.0, 1.0]),
-            principal_dirs=np.eye(3),
+            principal_axis=np.array([1.0, 0.0, 0.0]),
+            ref_dir=np.array([0.0, 1.0, 0.0]),
+            alpha_deg=0.0,
             ion_mass_kg=1.0,
             ion_charge_c=1.0,
             poly_is_potential_energy=False,
@@ -175,7 +187,9 @@ def test_bounded_infeasible_returns_none():
         out = idesign.solve_u_for_targets(
             r0=np.array([0.0, 0.0, 0.0]),
             freqs=np.array([1.0, 1.0, 1.0]),
-            principal_dirs=np.eye(3),
+            principal_axis=np.array([1.0, 0.0, 0.0]),
+            ref_dir=np.array([0.0, 1.0, 0.0]),
+            alpha_deg=0.0,
             ion_mass_kg=1.0,
             ion_charge_c=1.0,
             poly_is_potential_energy=False,

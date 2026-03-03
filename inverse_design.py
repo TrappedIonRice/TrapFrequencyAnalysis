@@ -27,7 +27,9 @@ def solve_u_for_targets(
     *,
     r0: np.ndarray,
     freqs: np.ndarray,
-    principal_dirs: np.ndarray,
+    principal_axis: np.ndarray,
+    ref_dir: np.ndarray,
+    alpha_deg: float,
     ion_mass_kg: float,
     ion_charge_c: float | None = None,
     poly_is_potential_energy: bool = True,
@@ -93,7 +95,9 @@ def solve_u_for_targets(
     # Build target Hessian and constraints
     Kstar = build_target_hessian(
         freqs_v,
-        principal_dirs,
+        principal_axis,
+        ref_dir,
+        alpha_deg,
         mass=ion_mass_kg,
         charge=ion_charge_c,
         poly_is_potential_energy=poly_is_potential_energy,
