@@ -112,7 +112,7 @@ def _as_rotation_matrix(principal_dirs: Sequence[Sequence[float]] | np.ndarray) 
         if mat.shape != (3, 3):
             raise ValueError("principal_dirs vectors must be length 3")
 
-    # Orthonormalize columns with QR for safety
+    # Orthonormalize for safety
     q, _ = np.linalg.qr(mat)
     if np.linalg.det(q) < 0:
         q[:, 2] *= -1.0

@@ -29,8 +29,8 @@ import numpy as np
 
 INCLUDE_ALL_RF_PSEUDOPOTENTIALS = False  # False keeps current behavior
 
-# ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
-ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
+ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
+# ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
 # ion_mass = 1.5e-26  # kg be
 ion_charge = 1.60217662 * (10 ** (-19))  # C
 epsilon_0 = 8.854187817e-12  # F/m
@@ -88,14 +88,14 @@ RF_ELECTRODES = ("RF1", "RF2") + RF_SEGMENTS
 ## used in both directions
 
 ## 1 D ##
-# center_region_x_um = 100  # microns
-# center_region_y_um = 10  # microns
-# center_region_z_um = center_region_y_um
+center_region_x_um = 100  # microns
+center_region_y_um = 10  # microns
+center_region_z_um = center_region_y_um
 
 ## 2 D ##
-center_region_x_um = 66  # microns
-center_region_y_um = 50  # microns
-center_region_z_um = 50
+# center_region_x_um = 133  # microns
+# center_region_y_um = 25  # microns
+# center_region_z_um = 25
 
 
 # TODO: The values should be applied differently, the current implemetation is flawed

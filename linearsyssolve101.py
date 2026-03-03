@@ -14,6 +14,7 @@ import numpy as np
 
 from sim.simulation import Simulation
 from trapping_variables import Trapping_Vars
+from trap_A_cache import DEFAULT_CACHE_DIR, get_or_build_A
 
 
 def _normalize_bounds(bounds, n: int) -> List[Tuple[float, float]]:
@@ -228,6 +229,37 @@ def build_voltage_to_c_matrix(
         "fit_r2_per_c": r2_per_c,
         "nonlinearity_flags": nonlin_flags,
     }
+
+
+def build_voltage_to_c_matrix_cached(
+    trap_name: str,
+    dc_electrodes: List[str],
+    rf_freq_hz: float,
+    num_samples: int,
+    rf_dc_electrodes: List[str] = ("RF1", "RF2"),
+    dc_bounds: Iterable[Tuple[float, float]] = (-500.0, 500.0),
+    rf_dc_bounds: Iterable[Tuple[float, float]] = (-50.0, 50.0),
+    rf2_bounds: Tuple[float, float] = (0.0, 5000.0**2),
+    polyfit_deg: int = 4,
+    seed: int = 0,
+    cache_dir: str = DEFAULT_CACHE_DIR,
+    force_rebuild: bool = False,
+) -> Dict[str, object]:
+    return get_or_build_A(
+        cache_dir=cache_dir,
+        trap_name=trap_name,
+        dc_electrodes=dc_electrodes,
+        rf_dc_electrodes=rf_dc_electrodes,
+        rf_freq_hz=rf_freq_hz,
+        polyfit_deg=polyfit_deg,
+        dc_bounds=dc_bounds,
+        rf_dc_bounds=rf_dc_bounds,
+        rf2_bounds=rf2_bounds,
+        num_samples=num_samples,
+        seed=seed,
+        builder_fn=build_voltage_to_c_matrix,
+        force_rebuild=force_rebuild,
+    )
 
 
 if __name__ == "__main__":

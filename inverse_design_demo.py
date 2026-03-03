@@ -12,42 +12,53 @@ from inverse_design import solve_u_for_targets
 from linearsyssolve101 import _build_trapping_vars_from_u
 from sim.simulation import Simulation
 from trapping_variables import Trapping_Vars
+import time
+import constants
 
 
 def run_demo() -> None:
+    start_time = time.time()
     # Target specification (hard-coded demo values)
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
-    freqs = np.array([0.3e6, 0.6e6, 3.2e6], dtype=float)  # Hz
-    principal_dirs = [[1,0,0],[0,1,0],[0,0,1]]
+    freqs = np.array(
+        [0.424e6, 1.823e6, 1.977e6], dtype=float
+    )  # Hz
+    principal_dirs = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
     # Trap/fit configuration for InnTrapFine
-    trap_name = "InnTrapFine"
-    dc_electrodes = [f"DC{i}" for i in range(1, 13)]
+    trap_name = "Simp58_101"
+    dc_electrodes = [f"DC{i}" for i in range(1, 11)]
 
     u_bounds = (
-    [(-10, 10)] * 12 +    # DC1..DC12
-    [(-30, 30)] * 2 +         # RF1_DC, RF2_DC
-    [(0, 1000000)]             # rf2
-)
+        [(-1000, 1000)] * 10  # DC1..DC12
+        + [(-5000.00000, 5000.00000)] * 2  # RF1_DC, RF2_DC
+        + [(100**2, 1000**2)]  # rf2
+    )
+
+    rf_freq_hz = 25.5e6
 
     out = solve_u_for_targets(
         r0=r0,
         freqs=freqs,
         principal_dirs=principal_dirs,
-        ion_mass_kg=6.64e-26,  # example: 40Ca+ in kg
+        ion_mass_kg=constants.ion_mass,  # example: 40Ca+ in kg
         ion_charge_c=1.602176634e-19,
         poly_is_potential_energy=False,
         freqs_in_hz=True,
         trap_name=trap_name,
         dc_electrodes=dc_electrodes,
-        rf_freq_hz=43e6,
+        rf_freq_hz=rf_freq_hz,
         num_samples=20,
         polyfit_deg=4,
-        objective="l2",
-        rf2_penalty_scale=1e-6,
-        enforce_bounds=True,
+        objective="l2_dc",
+        rf2_penalty_scale=1e-7,
+        enforce_bounds=False,
         u_bounds=u_bounds,
     )
+
+    end_time = time.time()
+    total_time = end_time - start_time
+    print("Total time taken (seconds):", total_time)
 
     np.set_printoptions(precision=6, suppress=True)
     print("status:", out["status"])
@@ -57,6 +68,9 @@ def run_demo() -> None:
     print("u_norminf:", out["u_norminf"])
     print("rf2:", out["rf2"])
     print("rf_amp:", out["rf_amp"])
+    if out["status"] != "ok" or not np.all(np.isfinite(out["u"])):
+        print("Solve failed; solver_info:", out["solver_info"])
+        return
 
     # Run simulation with the found u to inspect principal directions and freqs
     u = out["u"]
@@ -64,11 +78,15 @@ def run_demo() -> None:
         dc_electrodes=dc_electrodes,
         rf_dc_electrodes=["RF1", "RF2"],
         u=u,
-        rf_freq_hz=43e6,
+        rf_freq_hz=rf_freq_hz,
     )
     sim = Simulation(trap_name, Trapping_Vars())
     sim.change_electrode_variables(tv)
     sim.clear_held_results()
+
+    sim.find_equilib_position_single(num_ions=1)
+    eq_pos = sim.ion_equilibrium_positions.get(1)
+    print("Single-ion equilibrium position (m):", eq_pos)
 
     sim.get_static_normal_modes_and_freq(1, normalize=True, sort_by_freq=True)
     sim.compute_principal_directions_from_one_ion()
