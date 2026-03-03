@@ -3,7 +3,9 @@
 # polynomial to compute equilibrium constraints and mode properties.
 #
 # Core goal here: build a matrix A such that c = A @ u,
-# where u = [V_DC1, V_DC2, ..., V_DCK, V_rf^2] and c are the polynomial coefficients
+# where u = [V_DC1, V_DC2, ..., V_DCK, s] with s = V_rf^2 / omega_mhz^2,
+# and omega_mhz = (2*pi*f_rf_hz)/1e6.
+# and c are the polynomial coefficients
 # (ordered as in PolynomialFeatures(include_bias=True)).
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import time
 import numpy as np
 
 from sim.simulation import Simulation
+import constants
 from trapping_variables import Trapping_Vars
 from trap_A_cache import DEFAULT_CACHE_DIR, get_or_build_A
 
@@ -29,13 +32,14 @@ def _generate_input_points(
     num_samples: int,
     dc_bounds: List[Tuple[float, float]],
     rf_dc_bounds: List[Tuple[float, float]],
-    rf2_bounds: Tuple[float, float],
+    s_bounds: Tuple[float, float],
     seed: int = 0,
     include_axes: bool = True,
     include_zero: bool = True,
 ) -> np.ndarray:
     """
-    Generate input samples u = [V_DC..., V_rf^2].
+    Generate input samples u = [V_DC..., s], where s = V_rf^2 / omega_mhz^2
+    and omega_mhz = (2*pi*f_rf_hz)/1e6.
     Includes optional zero and per-axis +/- points, plus random samples.
     """
     rng = np.random.default_rng(seed)
@@ -56,9 +60,9 @@ def _generate_input_points(
             idx = k + i
             samples.append(_unit_with_value(k + k_rf + 1, idx, lo))
             samples.append(_unit_with_value(k + k_rf + 1, idx, hi))
-        # rf^2 axis
-        samples.append(_unit_with_value(k + k_rf + 1, k + k_rf, rf2_bounds[0]))
-        samples.append(_unit_with_value(k + k_rf + 1, k + k_rf, rf2_bounds[1]))
+        # s axis
+        samples.append(_unit_with_value(k + k_rf + 1, k + k_rf, s_bounds[0]))
+        samples.append(_unit_with_value(k + k_rf + 1, k + k_rf, s_bounds[1]))
 
     # randoms
     n_rand = max(0, num_samples - len(samples))
@@ -69,8 +73,8 @@ def _generate_input_points(
         rf_dc_hi = np.array([b[1] for b in rf_dc_bounds], dtype=float)
         dc_rand = rng.uniform(dc_lo, dc_hi, size=(n_rand, k))
         rf_dc_rand = rng.uniform(rf_dc_lo, rf_dc_hi, size=(n_rand, k_rf))
-        rf2_rand = rng.uniform(rf2_bounds[0], rf2_bounds[1], size=(n_rand, 1))
-        rand = np.hstack([dc_rand, rf_dc_rand, rf2_rand])
+        s_rand = rng.uniform(s_bounds[0], s_bounds[1], size=(n_rand, 1))
+        rand = np.hstack([dc_rand, rf_dc_rand, s_rand])
         samples.extend(list(rand))
 
     return np.asarray(samples, dtype=float)
@@ -86,12 +90,11 @@ def _build_trapping_vars_from_u(
     dc_electrodes: List[str],
     rf_dc_electrodes: List[str],
     u: np.ndarray,
-    rf_freq_hz: float,
     rf_electrodes: Tuple[str, str] = ("RF1", "RF2"),
 ) -> Trapping_Vars:
     """
-    Build Trapping_Vars for a given input vector u = [V_DC..., V_rf^2].
-    RF amplitude is sqrt(V_rf^2) applied symmetrically to rf_electrodes.
+    Build Trapping_Vars for a given input vector u = [V_DC..., s].
+    RF amplitude is sqrt(s) * omega_ref_mhz applied symmetrically to rf_electrodes.
     """
     k = len(dc_electrodes)
     k_rf = len(rf_dc_electrodes)
@@ -106,31 +109,32 @@ def _build_trapping_vars_from_u(
     for el, v in zip(rf_dc_electrodes, u[k : k + k_rf]):
         tv.set_amp(tv.dc_key, el, float(v))
 
-    # RF drive
-    rf2 = float(u[-1])
-    if rf2 < 0:
-        raise ValueError("V_rf^2 must be >= 0")
-    rf_amp = float(np.sqrt(rf2))
-    tv.add_driving("RF", float(rf_freq_hz), 0.0, {rf_electrodes[0]: rf_amp, rf_electrodes[1]: rf_amp})
+    # RF drive from s = V_rf^2 / omega_mhz^2 (use reference frequency)
+    s = float(u[-1])
+    if s < 0:
+        raise ValueError("s must be >= 0")
+    omega_ref_mhz = float(constants.RF_OMEGA_REF_MHZ)  # rad/s scaled to MHz units
+    rf_amp = float(np.sqrt(s) * omega_ref_mhz)
+    f_ref = float(constants.RF_FREQ_REF_HZ)
+    tv.add_driving("RF", f_ref, 0.0, {rf_electrodes[0]: rf_amp, rf_electrodes[1]: rf_amp})
     return tv
 
 
 def build_voltage_to_c_matrix(
     trap_name: str,
     dc_electrodes: List[str],
-    rf_freq_hz: float,
     num_samples: int,
     rf_dc_electrodes: List[str] = ("RF1", "RF2"),
     dc_bounds: Iterable[Tuple[float, float]] = (-500.0, 500.0),
     rf_dc_bounds: Iterable[Tuple[float, float]] = (-50.0, 50.0),
-    rf2_bounds: Tuple[float, float] = (0.0, 5000.0**2),
+    s_bounds: Tuple[float, float] = (0.0, constants.RF_S_MAX_DEFAULT),
     polyfit_deg: int = 4,
     seed: int = 0,
     rel_rmse_max: float = 1e-3,
     r2_min: float = 0.999,
 ) -> Dict[str, object]:
     """
-    Build a matrix A such that c = A @ u where u = [V_DC..., V_rf^2].
+    Build a matrix A such that c = A @ u where u = [V_DC..., s].
 
     Steps:
     - Generate input samples u across the specified bounds.
@@ -150,7 +154,7 @@ def build_voltage_to_c_matrix(
         num_samples=num_samples,
         dc_bounds=dc_bounds_list,
         rf_dc_bounds=rf_dc_bounds_list,
-        rf2_bounds=rf2_bounds,
+        s_bounds=s_bounds,
         seed=seed,
     )
 
@@ -166,7 +170,6 @@ def build_voltage_to_c_matrix(
             dc_electrodes=dc_electrodes,
             rf_dc_electrodes=rf_dc_electrodes,
             u=u,
-            rf_freq_hz=rf_freq_hz,
         )
         sim.change_electrode_variables(tv)
         sim.clear_held_results()
@@ -216,10 +219,11 @@ def build_voltage_to_c_matrix(
         "samples_u": U,
         "samples_c": C,
         "rf_dc_electrodes": list(rf_dc_electrodes),
+        "s_bounds": s_bounds,
         "u_layout": {
             "dc": (0, len(dc_electrodes)),
             "rf_dc": (len(dc_electrodes), len(dc_electrodes) + len(rf_dc_electrodes)),
-            "rf2": (len(dc_electrodes) + len(rf_dc_electrodes), len(dc_electrodes) + len(rf_dc_electrodes) + 1),
+            "s": (len(dc_electrodes) + len(rf_dc_electrodes), len(dc_electrodes) + len(rf_dc_electrodes) + 1),
         },
         # "fit_rmse": rmse,
         "fit_rel_rmse": rel_rmse,
@@ -234,12 +238,11 @@ def build_voltage_to_c_matrix(
 def build_voltage_to_c_matrix_cached(
     trap_name: str,
     dc_electrodes: List[str],
-    rf_freq_hz: float,
     num_samples: int,
     rf_dc_electrodes: List[str] = ("RF1", "RF2"),
     dc_bounds: Iterable[Tuple[float, float]] = (-500.0, 500.0),
     rf_dc_bounds: Iterable[Tuple[float, float]] = (-50.0, 50.0),
-    rf2_bounds: Tuple[float, float] = (0.0, 5000.0**2),
+    s_bounds: Tuple[float, float] = (0.0, constants.RF_S_MAX_DEFAULT),
     polyfit_deg: int = 4,
     seed: int = 0,
     cache_dir: str = DEFAULT_CACHE_DIR,
@@ -250,11 +253,10 @@ def build_voltage_to_c_matrix_cached(
         trap_name=trap_name,
         dc_electrodes=dc_electrodes,
         rf_dc_electrodes=rf_dc_electrodes,
-        rf_freq_hz=rf_freq_hz,
         polyfit_deg=polyfit_deg,
         dc_bounds=dc_bounds,
         rf_dc_bounds=rf_dc_bounds,
-        rf2_bounds=rf2_bounds,
+        s_bounds=s_bounds,
         num_samples=num_samples,
         seed=seed,
         builder_fn=build_voltage_to_c_matrix,
@@ -266,7 +268,6 @@ if __name__ == "__main__":
     out = build_voltage_to_c_matrix(
         trap_name="1252dTrapRice",
         dc_electrodes=[f"DC{i}" for i in range(1, 21)],
-        rf_freq_hz=60e6,
         num_samples=50,
     )
     print("A shape:", out["A"].shape)
@@ -276,7 +277,6 @@ if __name__ == "__main__":
     out2 = build_voltage_to_c_matrix(
         trap_name="InnTrapFine",
         dc_electrodes=[f"DC{i}" for i in range(1, 13)],
-        rf_freq_hz=43e6,
         num_samples=50,
     )
     print("A shape:", out2["A"].shape)
@@ -286,7 +286,6 @@ if __name__ == "__main__":
     out3 = build_voltage_to_c_matrix(
         trap_name="Simp58_101",
         dc_electrodes=[f"DC{i}" for i in range(1, 11)],
-        rf_freq_hz=27e6,
         num_samples=50,
     )
     print("A shape:", out3["A"].shape)

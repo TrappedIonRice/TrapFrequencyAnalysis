@@ -9,7 +9,6 @@ from __future__ import annotations
 import numpy as np
 
 from inverse_design import solve_u_for_targets
-from linearsyssolve101 import _build_trapping_vars_from_u
 from sim.simulation import Simulation
 from trapping_variables import Trapping_Vars
 import time
@@ -21,7 +20,7 @@ def run_demo() -> None:
     # Target specification (hard-coded demo values)
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
     freqs = np.array(
-        [0.424e6, 1.823e6, 1.977e6], dtype=float
+        [0.377e6, 1.923e6, 1.977e6], dtype=float
     )  # Hz
     principal_dirs = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
@@ -30,12 +29,13 @@ def run_demo() -> None:
     dc_electrodes = [f"DC{i}" for i in range(1, 11)]
 
     u_bounds = (
-        [(-1000, 1000)] * 10  # DC1..DC12
+        [(-1000, 1000)] * 10  # DC1..DC10
         + [(-5000.00000, 5000.00000)] * 2  # RF1_DC, RF2_DC
-        + [(100**2, 1000**2)]  # rf2
+        + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
     )
 
-    rf_freq_hz = 25.5e6
+    # Demo forward-check uses reference frequency to match A-model.
+    rf_freq_hz = constants.RF_FREQ_REF_HZ
 
     out = solve_u_for_targets(
         r0=r0,
@@ -47,11 +47,11 @@ def run_demo() -> None:
         freqs_in_hz=True,
         trap_name=trap_name,
         dc_electrodes=dc_electrodes,
-        rf_freq_hz=rf_freq_hz,
         num_samples=20,
+        s_bounds=(0.0, constants.RF_S_MAX_DEFAULT),
         polyfit_deg=4,
         objective="l2_dc",
-        rf2_penalty_scale=1e-7,
+        s_penalty_scale=1e-7,
         enforce_bounds=False,
         u_bounds=u_bounds,
     )
@@ -66,20 +66,23 @@ def run_demo() -> None:
     print("residual_norm:", out["residual_norm"])
     print("u_norm2:", out["u_norm2"])
     print("u_norminf:", out["u_norminf"])
-    print("rf2:", out["rf2"])
-    print("rf_amp:", out["rf_amp"])
+    print("s:", out["u_s"])
     if out["status"] != "ok" or not np.all(np.isfinite(out["u"])):
         print("Solve failed; solver_info:", out["solver_info"])
         return
 
     # Run simulation with the found u to inspect principal directions and freqs
     u = out["u"]
-    tv = _build_trapping_vars_from_u(
-        dc_electrodes=dc_electrodes,
-        rf_dc_electrodes=["RF1", "RF2"],
-        u=u,
-        rf_freq_hz=rf_freq_hz,
-    )
+    s = float(out["u_s"])
+    rf_amp = float(np.sqrt(max(s, 0.0)) * constants.RF_OMEGA_REF_MHZ)
+    print("rfamp: ", rf_amp)
+    print("rf_freq_hz: ", rf_freq_hz)
+    tv = Trapping_Vars()
+    for el, v in zip(dc_electrodes, u[: len(dc_electrodes)]):
+        tv.set_amp(tv.dc_key, el, float(v))
+    for el, v in zip(["RF1", "RF2"], u[len(dc_electrodes) : len(dc_electrodes) + 2]):
+        tv.set_amp(tv.dc_key, el, float(v))
+    tv.add_driving("RF", rf_freq_hz, 0.0, {"RF1": rf_amp, "RF2": rf_amp})
     sim = Simulation(trap_name, Trapping_Vars())
     sim.change_electrode_variables(tv)
     sim.clear_held_results()

@@ -1,0 +1,370 @@
+{
+  "entries": [
+    {
+      "cfg": {
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 10.0,
+        "center_region_z_um": 10.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "num_samples": 20,
+        "polyfit_deg": 4,
+        "rf2_bounds": [
+          0.0,
+          25000000.0
+        ],
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "rf_freq_hz": 30000000.0,
+        "seed": 0,
+        "trap_name": "Simp58_101",
+        "version": "A_cache_v1"
+      },
+      "created_utc": "2026-03-03T03:52:45.313054+00:00",
+      "fit_rel_rmse": 2.1059565020450635e-16,
+      "key": "7204acd302005602408185c15129e123cbffada18b20dfe07af5c619bb56a381",
+      "key12": "7204acd30200",
+      "path": "Simp58_101\\deg4\\7204acd30200.npz",
+      "polyfit_deg": 4,
+      "trap_name": "Simp58_101"
+    },
+    {
+      "cfg": {
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 10.0,
+        "center_region_z_um": 10.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "num_samples": 20,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          703.6193308495681
+        ],
+        "seed": 0,
+        "trap_name": "InnTrapFine",
+        "version": "A_cache_v3"
+      },
+      "created_utc": "2026-03-03T04:50:31.381299+00:00",
+      "fit_rel_rmse": 1.6222131393690623e-16,
+      "key": "1329172defea67aef50a702c6586a006b076621179316e18c6ea859d1163a96d",
+      "key12": "1329172defea",
+      "path": "InnTrapFine\\deg4\\1329172defea.npz",
+      "polyfit_deg": 4,
+      "trap_name": "InnTrapFine"
+    },
+    {
+      "cfg": {
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 10.0,
+        "center_region_z_um": 10.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "num_samples": 20,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          70361.9330849568
+        ],
+        "seed": 0,
+        "trap_name": "InnTrapFine",
+        "version": "A_cache_v3"
+      },
+      "created_utc": "2026-03-03T04:54:04.921118+00:00",
+      "fit_rel_rmse": 1.5028458218499008e-16,
+      "key": "c5fbaa409c2c30fcf867759083ab31c3cee29c5e18303c2aa78c06e84f2d7752",
+      "key12": "c5fbaa409c2c",
+      "path": "InnTrapFine\\deg4\\c5fbaa409c2c.npz",
+      "polyfit_deg": 4,
+      "trap_name": "InnTrapFine"
+    },
+    {
+      "cfg": {
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 10.0,
+        "center_region_z_um": 10.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "num_samples": 20,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          70361.9330849568
+        ],
+        "seed": 0,
+        "trap_name": "Simp58_101",
+        "version": "A_cache_v3"
+      },
+      "created_utc": "2026-03-03T04:55:01.898012+00:00",
+      "fit_rel_rmse": 1.7738866492832869e-16,
+      "key": "d37d990e75ff24ec7c478f33d85e5b1acc22930c73131fdd5d294e71bb4cf97b",
+      "key12": "d37d990e75ff",
+      "path": "Simp58_101\\deg4\\d37d990e75ff.npz",
+      "polyfit_deg": 4,
+      "trap_name": "Simp58_101"
+    }
+  ],
+  "schema_version": "1"
+}

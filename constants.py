@@ -92,6 +92,13 @@ center_region_x_um = 100  # microns
 center_region_y_um = 10  # microns
 center_region_z_um = center_region_y_um
 
+# Reference RF frequency used for A-matrix construction (Hz)
+RF_FREQ_REF_HZ = 30e6
+# Use omega in MHz units for s: omega_MHz = 2*pi*(f_Hz/1e6)
+# This is omega/1e6 (rad/s scaled to MHz units), used in s definition.
+RF_OMEGA_REF_MHZ = 2.0 * np.pi * (RF_FREQ_REF_HZ / 1e6)
+RF_S_MAX_DEFAULT = (50000.0**2) / (RF_OMEGA_REF_MHZ**2)
+
 ## 2 D ##
 # center_region_x_um = 133  # microns
 # center_region_y_um = 25  # microns
