@@ -99,7 +99,14 @@ def solve_u_for_targets(
         poly_is_potential_energy=poly_is_potential_energy,
         freqs_in_hz=freqs_in_hz,
     )
-    L, b = build_L_b_for_point(powers, r0v, Kstar, include_gradient=True)
+    L, b = build_L_b_for_point(
+        powers,
+        r0v,
+        Kstar,
+        include_gradient=True,
+        basis="nondim",
+        nd_L0_m=constants.ND_L0_M,
+    )
     Mmat = L @ A
 
     # Solve for u
@@ -108,39 +115,50 @@ def solve_u_for_targets(
     if objective not in ("l2", "linf", "weighted_l2", "avg_max_dc", "l2_dc"):
         raise ValueError("objective must be 'l2', 'linf', 'weighted_l2', 'avg_max_dc', or 'l2_dc'")
 
-    bounds_requested = enforce_bounds or (u_bounds is not None)
+    bounded_mode = enforce_bounds or (u_bounds is not None) or (objective in ("linf", "avg_max_dc", "l2_dc"))
+
+    # Unbounded best-effort diagnostic
+    u_ls, resid_ls = _lsq_best_effort(Mmat, b)
+    eq_tol = _eq_tol(b)
+    solver_info.update(
+        {
+            "resid_ls": resid_ls,
+            "eq_tol": eq_tol,
+            "target_feasible_unbounded": resid_ls <= eq_tol,
+        }
+    )
     if objective == "l2":
-        if bounds_requested:
+        if bounded_mode:
             if not _HAVE_SCIPY:
                 raise RuntimeError("SciPy is required for constrained l2 solve")
             if u_bounds is None:
                 u_bounds = _build_u_bounds_from_blocks(dc_bounds, rf_dc_bounds, s_bounds, len(dc_electrodes), len(rf_dc_electrodes))
             u, info = _solve_l2_constrained(Mmat, b, u_bounds)
             solver_info.update(info)
-            if u is None:
-                status = "qp_failed"
+            solver_info["solver_name"] = "l2_constrained"
+            solver_info["message"] = info.get("message", "")
         else:
             u, info = _solve_l2_min_norm(Mmat, b, ridge_lambda=ridge_lambda)
             solver_info.update(info)
-            if info.get("used_ridge", False):
-                status = "used_ridge"
+            solver_info["solver_name"] = "l2_min_norm"
+            solver_info["message"] = info.get("message", "")
     elif objective == "weighted_l2":
-        if bounds_requested:
+        if bounded_mode:
             if not _HAVE_SCIPY:
                 raise RuntimeError("SciPy is required for constrained weighted_l2 solve")
             if u_bounds is None:
                 u_bounds = _build_u_bounds_from_blocks(dc_bounds, rf_dc_bounds, s_bounds, len(dc_electrodes), len(rf_dc_electrodes))
             u, info = _solve_weighted_l2_constrained(Mmat, b, u_bounds, s_penalty_scale)
             solver_info.update(info)
-            if u is None:
-                status = "qp_failed"
+            solver_info["solver_name"] = "weighted_l2_constrained"
+            solver_info["message"] = info.get("message", "")
         else:
             u, info = _solve_weighted_l2_min_norm(
                 Mmat, b, s_penalty_scale=s_penalty_scale, ridge_lambda=ridge_lambda
             )
             solver_info.update(info)
-            if info.get("used_ridge", False):
-                status = "used_ridge"
+            solver_info["solver_name"] = "weighted_l2_min_norm"
+            solver_info["message"] = info.get("message", "")
     elif objective == "l2_dc":
         if u_bounds is None:
             raise ValueError("u_bounds is required for objective='l2_dc'")
@@ -154,8 +172,8 @@ def solve_u_for_targets(
         weights[-1] = 0.0  # do not penalize s in objective
         u, info = _solve_weighted_l2_constrained_custom(Mmat, b, bounds_clean, weights)
         solver_info.update(info)
-        if u is None:
-            status = "qp_failed"
+        solver_info["solver_name"] = "l2_dc_constrained"
+        solver_info["message"] = info.get("message", "")
     elif objective == "avg_max_dc":
         if not _HAVE_SCIPY:
             raise RuntimeError("SciPy is required for avg_max_dc solve")
@@ -167,85 +185,90 @@ def solve_u_for_targets(
             u_bounds = _build_u_bounds_from_blocks(dc_bounds, rf_dc_bounds, s_bounds, K, K_rf)
         u, info = _solve_avg_max_dc_lp(Mmat, b, dc_indices, rf_dc_indices, u_bounds)
         solver_info.update(info)
-        if u is None:
-            status = "lp_failed"
+        solver_info["solver_name"] = "avg_max_dc_lp"
+        solver_info["message"] = info.get("message", "")
     else:
         if not _HAVE_SCIPY:
             raise RuntimeError("SciPy is required for linf solve")
         u, info = _solve_linf_lp(Mmat, b, u_bounds)
         solver_info.update(info)
-        if u is None:
-            status = "lp_failed"
+        solver_info["solver_name"] = "linf_lp"
+        solver_info["message"] = info.get("message", "")
 
-    # Diagnostics
+    # Post-solve feasibility checks
     if u is None:
-        print(f"[solve_u_for_targets] Bounded solve failed: {solver_info.get('message', '')}")
-        return {
-            "u": None,
-            "u_dc": None,
-            "u_rf_dc": None,
-            "u_s": None,
-            "A": A,
-            "powers": powers,
-            "L": L,
-            "b": b,
-            "M": Mmat,
-            "residual_norm": float("nan"),
-            "u_norm2": None,
-            "u_norminf": None,
-            "status": status,
-            "solver_info": solver_info,
-            "cache_hit": out.get("cache_hit", False),
-            "cache_path": out.get("cache_path"),
-            "cfg": out.get("cfg"),
-        }
+        if bounded_mode:
+            msg = (
+                f"Not feasible given bounds. resid_min={resid_ls:.3e}, "
+                f"eq_tol={eq_tol:.3e}, solver={solver_info.get('solver_name','')}"
+            )
+            print(msg + " Try loosening bounds or changing target.")
+            solver_info["message"] = msg
+            solver_info["resid"] = resid_ls
+            status = "infeasible_bounds" if _solver_reports_infeasible(solver_info) else "solver_failed"
+            return _pack_result(
+                u=None,
+                status=status,
+                solver_info=solver_info,
+                A=A,
+                powers=powers,
+                L=L,
+                b=b,
+                Mmat=Mmat,
+                cache_out=out,
+            )
+        # Unbounded mode: fall back to best-effort LS solution
+        u = u_ls
 
-    if np.all(np.isfinite(u)):
-        resid = Mmat @ u - b
-        residual_norm = float(np.linalg.norm(resid))
-        eq_tol = 1e-9 * (1.0 + float(np.linalg.norm(b)))
-        solver_info["eq_tol"] = eq_tol
-        if residual_norm > eq_tol:
-            solver_info["eq_resid"] = residual_norm
-            if bounds_requested:
-                status = "eq_violation"
-                print(f"[solve_u_for_targets] Equality residual {residual_norm:.3e} exceeds tol {eq_tol:.3e}")
-                return {
-                    "u": None,
-                    "u_dc": None,
-                    "u_rf_dc": None,
-                    "u_s": None,
-                    "A": A,
-                    "powers": powers,
-                    "L": L,
-                    "b": b,
-                    "M": Mmat,
-                    "residual_norm": residual_norm,
-                    "u_norm2": None,
-                    "u_norminf": None,
-                    "status": status,
-                    "solver_info": solver_info,
-                    "cache_hit": out.get("cache_hit", False),
-                    "cache_path": out.get("cache_path"),
-                    "cfg": out.get("cfg"),
-                }
-            status = "best_effort_large_resid"
-        u_norm2 = float(np.linalg.norm(u))
-        u_norminf = float(np.max(np.abs(u)))
-        s_val = float(u[-1])
-        if s_val < 0 and status == "ok":
-            status = "best_effort_s_negative"
+    resid = _eq_residual(Mmat, u, b)
+    solver_info["resid"] = resid
+    solver_info["eq_tol"] = eq_tol
+
+    if bounded_mode:
+        if resid <= eq_tol:
+            status = "ok"
+        else:
+            msg = (
+                f"Solver returned but equality not met within tolerance. "
+                f"resid={resid:.3e}, eq_tol={eq_tol:.3e}, solver={solver_info.get('solver_name','')}"
+            )
+            print(msg + " Try loosening bounds or changing target.")
+            solver_info["message"] = msg
+            status = "solver_failed"
+            return _pack_result(
+                u=None,
+                status=status,
+                solver_info=solver_info,
+                A=A,
+                powers=powers,
+                L=L,
+                b=b,
+                Mmat=Mmat,
+                cache_out=out,
+            )
     else:
-        # Fall back to unconstrained least-squares residual for feasibility signal.
-        u_lsq, *_ = np.linalg.lstsq(Mmat, b, rcond=None)
-        resid = Mmat @ u_lsq - b
-        residual_norm = float(np.linalg.norm(resid))
-        eq_tol = 1e-9 * (1.0 + float(np.linalg.norm(b)))
-        solver_info["eq_tol"] = eq_tol
-        u_norm2 = float("nan")
-        u_norminf = float("nan")
-        s_val = float("nan")
-        solver_info["lsq_residual_norm"] = residual_norm
+        if resid <= eq_tol:
+            status = "ok"
+        else:
+            msg = (
+                "Target not exactly feasible (b not in range(M) within tol). "
+                "Returning least-squares best-effort."
+            )
+            solver_info["message"] = msg
+            status = "best_effort_infeasible"
+            u = u_ls
+            resid = resid_ls
+            solver_info["resid"] = resid
+
+    u_norm2 = float(np.linalg.norm(u))
+    u_norminf = float(np.max(np.abs(u)))
+    s_val = float(u[-1])
+    if s_val < 0 and status == "ok" and not bounded_mode:
+        status = "best_effort_infeasible"
+        solver_info["message"] = (
+            solver_info.get("message", "")
+            + " s is negative; consider bounds if s>=0 is required."
+        ).strip()
 
     return {
         "u": u,
@@ -257,7 +280,7 @@ def solve_u_for_targets(
         "L": L,
         "b": b,
         "M": Mmat,
-        "residual_norm": residual_norm,
+        "residual_norm": resid,
         "u_norm2": u_norm2,
         "u_norminf": u_norminf,
         "status": status,
@@ -279,6 +302,63 @@ def _bounds_needed_for_s(u_bounds: List[Tuple[float, float]] | None) -> bool:
     if isinstance(lo, float) and np.isnan(lo):
         return True
     return lo < 0.0
+
+
+def _eq_tol(b: np.ndarray) -> float:
+    return 1e-9 * (1.0 + float(np.linalg.norm(b)))
+
+
+def _eq_residual(M: np.ndarray, u: np.ndarray, b: np.ndarray) -> float:
+    return float(np.linalg.norm(M @ u - b))
+
+
+def _lsq_best_effort(M: np.ndarray, b: np.ndarray) -> Tuple[np.ndarray, float]:
+    u_ls, *_ = np.linalg.lstsq(M, b, rcond=None)
+    resid = _eq_residual(M, u_ls, b)
+    return u_ls, resid
+
+
+def _solver_reports_infeasible(solver_info: Dict[str, object]) -> bool:
+    msg = str(solver_info.get("message", "")).lower()
+    if "infeasible" in msg:
+        return True
+    status = solver_info.get("status")
+    if isinstance(status, int) and status in (2,):
+        return True
+    return False
+
+
+def _pack_result(
+    *,
+    u: np.ndarray | None,
+    status: str,
+    solver_info: Dict[str, object],
+    A: np.ndarray,
+    powers: np.ndarray,
+    L: np.ndarray,
+    b: np.ndarray,
+    Mmat: np.ndarray,
+    cache_out: Dict[str, object],
+) -> Dict[str, object]:
+    return {
+        "u": None if u is None else u,
+        "u_dc": None,
+        "u_rf_dc": None,
+        "u_s": None,
+        "A": A,
+        "powers": powers,
+        "L": L,
+        "b": b,
+        "M": Mmat,
+        "residual_norm": float("nan"),
+        "u_norm2": None,
+        "u_norminf": None,
+        "status": status,
+        "solver_info": solver_info,
+        "cache_hit": cache_out.get("cache_hit", False),
+        "cache_path": cache_out.get("cache_path"),
+        "cfg": cache_out.get("cfg"),
+    }
 
 
 def _solve_l2_min_norm(

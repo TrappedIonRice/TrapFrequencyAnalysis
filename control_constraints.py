@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Sequence, Tuple
 
 import numpy as np
+import constants
 
 
 def build_target_hessian(
@@ -67,11 +68,14 @@ def build_L_b_for_point(
     Kstar: np.ndarray,
     include_gradient: bool = True,
     hess_order: str = "vech",
+    basis: str = "nondim",
+    nd_L0_m: float | None = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Build linear constraints L @ c = b enforcing gradient=0 and Hessian=Kstar.
 
     hess_order="vech" uses rows [xx, yy, zz, xy, xz, yz].
+    If basis="nondim", r0 is scaled by L0 and Kstar is scaled by L0^2.
     """
     p = np.asarray(powers, dtype=int)
     if p.ndim != 2 or p.shape[1] != 3:
@@ -85,17 +89,27 @@ def build_L_b_for_point(
     if hess_order != "vech":
         raise ValueError("only hess_order='vech' is supported")
 
-    dx, dy, dz = build_derivative_rows(p, r0v)
-    dxx, dyy, dzz, dxy, dxz, dyz = build_hessian_rows(p, r0v)
+    if basis not in ("nondim", "physical"):
+        raise ValueError("basis must be 'nondim' or 'physical'")
+    L0 = float(constants.ND_L0_M if nd_L0_m is None else nd_L0_m)
+    if basis == "nondim":
+        r_eval = r0v / L0
+        K_use = K * (L0**2)
+    else:
+        r_eval = r0v
+        K_use = K
+
+    dx, dy, dz = build_derivative_rows(p, r_eval)
+    dxx, dyy, dzz, dxy, dxz, dyz = build_hessian_rows(p, r_eval)
 
     hess_rows = [dxx, dyy, dzz, dxy, dxz, dyz]
     if include_gradient:
         L = np.vstack([dx, dy, dz] + hess_rows).astype(float)
         b = np.zeros(9, dtype=float)
-        b[3:] = _vech_symmetric(K)
+        b[3:] = _vech_symmetric(K_use)
     else:
         L = np.vstack(hess_rows).astype(float)
-        b = _vech_symmetric(K)
+        b = _vech_symmetric(K_use)
 
     return L, b
 

@@ -20,7 +20,7 @@ def run_demo() -> None:
     # Target specification (hard-coded demo values)
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
     freqs = np.array(
-        [0.377e6, 1.923e6, 1.977e6], dtype=float
+        [0.360e6, 2.210e6, 2.320e6], dtype=float
     )  # Hz
     principal_dirs = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
@@ -30,7 +30,7 @@ def run_demo() -> None:
 
     u_bounds = (
         [(-1000, 1000)] * 10  # DC1..DC10
-        + [(-5000.00000, 5000.00000)] * 2  # RF1_DC, RF2_DC
+        + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
         + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
     )
 
@@ -67,7 +67,7 @@ def run_demo() -> None:
     print("u_norm2:", out["u_norm2"])
     print("u_norminf:", out["u_norminf"])
     print("s:", out["u_s"])
-    if out["status"] != "ok" or not np.all(np.isfinite(out["u"])):
+    if out["u"] is None or out["status"] != "ok":
         print("Solve failed; solver_info:", out["solver_info"])
         return
 

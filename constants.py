@@ -29,8 +29,8 @@ import numpy as np
 
 INCLUDE_ALL_RF_PSEUDOPOTENTIALS = False  # False keeps current behavior
 
-ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
-# ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
+# ion_mass = 2.885 * (10 ** (-25))  # kg Yb+
+ion_mass = 6.642065 * (10 ** (-26))  # kg Ca40
 # ion_mass = 1.5e-26  # kg be
 ion_charge = 1.60217662 * (10 ** (-19))  # C
 epsilon_0 = 8.854187817e-12  # F/m
@@ -87,22 +87,27 @@ RF_ELECTRODES = ("RF1", "RF2") + RF_SEGMENTS
 
 ## used in both directions
 
-## 1 D ##
+# ## 1 D ##
 center_region_x_um = 100  # microns
-center_region_y_um = 10  # microns
+center_region_y_um = 20  # microns
 center_region_z_um = center_region_y_um
 
+## 2 D ##
+# center_region_x_um = 100  # microns
+# center_region_y_um = 25  # microns
+# center_region_z_um = 25
+
 # Reference RF frequency used for A-matrix construction (Hz)
-RF_FREQ_REF_HZ = 30e6
+RF_FREQ_REF_HZ = 43e6
 # Use omega in MHz units for s: omega_MHz = 2*pi*(f_Hz/1e6)
 # This is omega/1e6 (rad/s scaled to MHz units), used in s definition.
 RF_OMEGA_REF_MHZ = 2.0 * np.pi * (RF_FREQ_REF_HZ / 1e6)
-RF_S_MAX_DEFAULT = (50000.0**2) / (RF_OMEGA_REF_MHZ**2)
+RF_S_MAX_DEFAULT = (4000.0**2) / (RF_OMEGA_REF_MHZ**2)
 
-## 2 D ##
-# center_region_x_um = 133  # microns
-# center_region_y_um = 25  # microns
-# center_region_z_um = 25
+# Nondimensionalization length scale for inverse pipeline
+ND_L0_M = 10e-6
+ND_L0_UM = 10.0
+
 
 
 # TODO: The values should be applied differently, the current implemetation is flawed

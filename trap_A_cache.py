@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import numpy as np
 
 DEFAULT_CACHE_DIR = os.path.join(".cache", "trap_A")
-_CACHE_VERSION = "A_cache_v3"
+_CACHE_VERSION = "A_cache_v5"
 
 
 def normalize_bounds(bounds: Iterable[Tuple[float, float]], n: int) -> List[List[float]]:
@@ -55,6 +55,8 @@ def load_A_from_cache(path: str) -> Dict[str, Any] | None:
             "created_utc": created_utc,
             "path": path,
         }
+        if "cfg_full_json" in data.files:
+            out["cfg_full"] = json.loads(str(data["cfg_full_json"].item()))
         # Optional extras
         for k in [
             "u_layout",
@@ -72,10 +74,11 @@ def save_A_to_cache(
     path: str,
     A: np.ndarray,
     powers: np.ndarray,
-    cfg_dict: Dict[str, Any],
+    cfg_key: Dict[str, Any],
+    cfg_full: Dict[str, Any] | None = None,
     extra: Dict[str, Any] | None = None,
 ) -> str:
-    cfg_json = json.dumps(cfg_dict, sort_keys=True)
+    cfg_json = json.dumps(cfg_key, sort_keys=True)
     created_utc = datetime.now(timezone.utc).isoformat()
     payload = {
         "A": np.asarray(A, dtype=float),
@@ -84,6 +87,8 @@ def save_A_to_cache(
         "version": np.array(_CACHE_VERSION),
         "created_utc": np.array(created_utc),
     }
+    if cfg_full is not None:
+        payload["cfg_full_json"] = np.array(json.dumps(cfg_full, sort_keys=True))
     if extra:
         for k, v in extra.items():
             payload[k] = v
@@ -147,7 +152,7 @@ def get_or_build_A(
 ) -> Dict[str, Any]:
     import constants
 
-    cfg = {
+    cfg_full = {
         "trap_name": trap_name,
         "dc_electrodes": list(dc_electrodes),
         "rf_dc_electrodes": list(rf_dc_electrodes),
@@ -157,19 +162,37 @@ def get_or_build_A(
         "s_bounds": [float(s_bounds[0]), float(s_bounds[1])],
         "num_samples": int(num_samples),
         "seed": int(seed),
+        "basis": "nondim",
+        "nd_L0_m": float(constants.ND_L0_M),
         "center_region_x_um": float(constants.center_region_x_um),
         "center_region_y_um": float(constants.center_region_y_um),
         "center_region_z_um": float(constants.center_region_z_um),
         "version": _CACHE_VERSION,
     }
-    key = make_cache_key(cfg)
+
+    # Key should ignore sampling/bounds so changes there do not invalidate A.
+    cfg_key = {
+        "trap_name": trap_name,
+        "dc_electrodes": list(dc_electrodes),
+        "rf_dc_electrodes": list(rf_dc_electrodes),
+        "polyfit_deg": int(polyfit_deg),
+        "basis": "nondim",
+        "nd_L0_m": float(constants.ND_L0_M),
+        "center_region_x_um": float(constants.center_region_x_um),
+        "center_region_y_um": float(constants.center_region_y_um),
+        "center_region_z_um": float(constants.center_region_z_um),
+        "version": _CACHE_VERSION,
+    }
+
+    key = make_cache_key(cfg_key)
     path = cache_file_path(cache_dir, trap_name, polyfit_deg, key)
 
     if not force_rebuild:
         cached = load_A_from_cache(path)
-        if cached is not None and cached.get("cfg") == cfg:
+        if cached is not None and cached.get("cfg") == cfg_key:
             cached["cache_hit"] = True
             cached["cache_path"] = path
+            cached["cfg"] = cfg_full
             return cached
 
     out = builder_fn(
@@ -190,7 +213,7 @@ def get_or_build_A(
         "fit_r2_per_c": np.array(out.get("fit_r2_per_c", np.array([]))),
         "nonlinearity_flags": np.array(json.dumps(out.get("nonlinearity_flags", []))),
     }
-    created_utc = save_A_to_cache(path, out["A"], out["powers"], cfg, extra=extra)
+    created_utc = save_A_to_cache(path, out["A"], out["powers"], cfg_key, cfg_full=cfg_full, extra=extra)
     rel_path = os.path.relpath(path, cache_dir)
     upsert_index_entry(
         cache_dir,
@@ -201,11 +224,13 @@ def get_or_build_A(
             "polyfit_deg": int(polyfit_deg),
             "path": rel_path,
             "created_utc": created_utc,
-            "cfg": cfg,
+            "cfg": cfg_full,
+            "cfg_key": cfg_key,
             "fit_rel_rmse": out.get("fit_rel_rmse"),
         },
     )
     out["cache_hit"] = False
     out["cache_path"] = path
-    out["cfg"] = cfg
+    out["cfg"] = cfg_full
+    out["cfg_key"] = cfg_key
     return out

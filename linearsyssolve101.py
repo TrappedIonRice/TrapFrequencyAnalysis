@@ -134,7 +134,8 @@ def build_voltage_to_c_matrix(
     r2_min: float = 0.999,
 ) -> Dict[str, object]:
     """
-    Build a matrix A such that c = A @ u where u = [V_DC..., s].
+    Build a matrix A such that c_nd = A @ u where u = [V_DC..., s].
+    Coefficients are in a nondimensional basis xi=x/L0, with c_nd = c_phys * L0^deg.
 
     Steps:
     - Generate input samples u across the specified bounds.
@@ -179,15 +180,24 @@ def build_voltage_to_c_matrix(
         c_samples.append(c)
         print(f"point {i} time: {time.time() - t0:.3f}s")
 
-    C = np.asarray(c_samples, dtype=float)  # (N x M)
+    C_phys = np.asarray(c_samples, dtype=float)  # (N x M)
     U = np.asarray(u_samples, dtype=float)  # (N x K+1)
 
-    # Solve U @ X = C for X ((K+K_rf+1) x M) => A = X.T (M x (K+K_rf+1))
-    X, residuals, rank, svals = np.linalg.lstsq(U, C, rcond=None)
-    A = X.T
+    # Solve U @ X = C_phys for X ((K+K_rf+1) x M)
+    X, residuals, rank, svals = np.linalg.lstsq(U, C_phys, rcond=None)
+    A_phys = X.T
+
+    # Scale into nondimensional basis: c_nd = c_phys * L0^deg
+    if powers_ref is None:
+        raise RuntimeError("powers_ref missing; cannot scale to nondimensional basis")
+    degrees = np.sum(powers_ref, axis=1).astype(int)
+    scale = (constants.ND_L0_M ** degrees).astype(float)
+    A = scale[:, None] * A_phys
+    C = C_phys * scale
 
     # Linearity check and error stuff
-    C_pred = U @ X
+    C_pred_phys = U @ X
+    C_pred = C_pred_phys * scale
     err = C_pred - C
     rmse = float(np.sqrt(np.mean(err**2)))
     denom = float(np.sqrt(np.mean(C**2))) if np.any(C) else float("nan")
@@ -220,6 +230,8 @@ def build_voltage_to_c_matrix(
         "samples_c": C,
         "rf_dc_electrodes": list(rf_dc_electrodes),
         "s_bounds": s_bounds,
+        "basis": "nondim",
+        "nd_L0_m": constants.ND_L0_M,
         "u_layout": {
             "dc": (0, len(dc_electrodes)),
             "rf_dc": (len(dc_electrodes), len(dc_electrodes) + len(rf_dc_electrodes)),

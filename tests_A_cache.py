@@ -44,6 +44,9 @@ def test_cache_hit(tmp_path):
     assert entry["key12"] == entry["key"][:12]
     expected_rel = os.path.join(cfg["trap_name"], f"deg{cfg['polyfit_deg']}", f"{entry['key12']}.npz")
     assert entry["path"].endswith(expected_rel)
+    assert "cfg_key" in entry
+    assert entry["cfg"].get("basis") == "nondim"
+    assert "nd_L0_m" in entry["cfg"]
 
 
 def test_force_rebuild(tmp_path):

@@ -1,4 +1,5 @@
 import numpy as np
+import constants
 
 from control_constraints import build_L_b_for_point
 
@@ -16,6 +17,9 @@ def test_quadratic_hessian_matches():
         dtype=int,
     )
     coeffs = np.array([a, b, c, d], dtype=float)
+    L0 = constants.ND_L0_M
+    degrees = np.sum(powers, axis=1)
+    coeffs_nd = coeffs * (L0 ** degrees)
     r0 = np.array([0.1, -0.2, 0.05], dtype=float)
 
     Kstar = np.array(
@@ -28,7 +32,7 @@ def test_quadratic_hessian_matches():
     )
 
     L, b = build_L_b_for_point(powers, r0, Kstar, include_gradient=False)
-    np.testing.assert_allclose(L @ coeffs, b, rtol=0, atol=1e-12)
+    np.testing.assert_allclose(L @ coeffs_nd, b, rtol=0, atol=1e-12)
 
 
 def test_gradient_rows_pick_linear_terms():
@@ -43,12 +47,15 @@ def test_gradient_rows_pick_linear_terms():
         dtype=int,
     )
     coeffs = np.array([a, b, c], dtype=float)
+    L0 = constants.ND_L0_M
+    degrees = np.sum(powers, axis=1)
+    coeffs_nd = coeffs * (L0 ** degrees)
     r0 = np.array([0.3, -0.4, 0.5], dtype=float)
     Kstar = np.zeros((3, 3), dtype=float)
 
     L, b = build_L_b_for_point(powers, r0, Kstar, include_gradient=True)
-    grad = (L @ coeffs)[:3]
-    np.testing.assert_allclose(grad, np.array([a, b, c], dtype=float), rtol=0, atol=1e-12)
+    grad = (L @ coeffs_nd)[:3]
+    np.testing.assert_allclose(grad, np.array([a * L0, b * L0, c * L0], dtype=float), rtol=0, atol=1e-12)
     np.testing.assert_allclose(b[:3], np.zeros(3), rtol=0, atol=0)
 
 
@@ -57,11 +64,12 @@ def test_hessian_vech_ordering():
     d = 1.7
     powers = np.array([[1, 1, 0]], dtype=int)
     coeffs = np.array([d], dtype=float)
+    L0 = constants.ND_L0_M
+    coeffs_nd = coeffs * (L0 ** 2)
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
     Kstar = np.zeros((3, 3), dtype=float)
 
     L, _ = build_L_b_for_point(powers, r0, Kstar, include_gradient=False)
-    vech = L @ coeffs
-    expected = np.array([0.0, 0.0, 0.0, d, 0.0, 0.0], dtype=float)
+    vech = L @ coeffs_nd
+    expected = np.array([0.0, 0.0, 0.0, d * (L0 ** 2), 0.0, 0.0], dtype=float)
     np.testing.assert_allclose(vech, expected, rtol=0, atol=1e-12)
-
