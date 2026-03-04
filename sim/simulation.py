@@ -226,21 +226,26 @@ class Simulation(
                 )
 
         # # final DC + pseudo (unchanged)
+        # df["Static_TotalV"] = ne.evaluate(
+        #     f"{sum_v_dc} + ({pseudo_expr})", local_dict=local_dict
+        # )
+
+        # --- DC only ---
+        df["Static_DCV"] = ne.evaluate(
+            sum_v_dc,
+            local_dict=local_dict
+        )
+
+        #--- RF only (pseudopotential) ---
+        df["Static_RFPseudoV"] = ne.evaluate(
+            pseudo_expr,
+            local_dict=local_dict
+        )
+
+            # final DC + pseudo (unchanged)
         df["Static_TotalV"] = ne.evaluate(
             f"{sum_v_dc} + ({pseudo_expr})", local_dict=local_dict
         )
-
-        # --- DC only ---
-        # df["Static_TotalV"] = ne.evaluate(
-        #     sum_v_dc,
-        #     local_dict=local_dict
-        # )
-
-        #--- RF only (pseudopotential) ---
-        # df["Static_TotalV"] = ne.evaluate(
-        #     pseudo_expr,
-        #     local_dict=local_dict
-        # )
 
         # ---------- per-drive totals (scalar only, no pseudo) ----------
 
@@ -433,7 +438,7 @@ class Simulation(
         omega = np.sqrt(abs(vals) / constants.ion_mass)
         f_Hz = omega / (2 * np.pi)
         f_MHz = f_Hz * 1e-6
-        # print("secular frequencies (MHz):", f_MHz)  ### THIS IS THE CORRECT UNITS ###
+        print("secular frequencies (MHz):", f_MHz)  ### THIS IS THE CORRECT UNITS ###
         # print("")
         self.get_static_normal_modes_and_freq(n_ions)
         # print(self.normal_modes_and_frequencies)
@@ -1168,15 +1173,18 @@ def main_2():
     tv = Trapping_Vars()
 
     # RF drive setup
-    rf_freq_hz = (43) * 10**6
-    rf_amp_rf1 = 570
-    rf_amp_rf2 = 570
+    of_DC_end = 0
+    of_DC_center = 0
+    offset_RF = 0
+
+    rf_freq_hz = (36) * 10**6
+    rf_amp_rf1 = 620 #120
+    rf_amp_rf2 = 620 #120
     tv.add_driving("RF", rf_freq_hz, 0.0, {"RF1": rf_amp_rf1, "RF2": rf_amp_rf2})
-    #x = 0
-    of = 0
-    outer = 130 #Endcaps
-    inner = 30 #Midcaps
-    center = 30 #Centercaps
+
+    outer = 100 - of_DC_end #Endcaps
+    inner = 30 - of_DC_center #Midcaps
+    center = 30 - of_DC_center #Centercaps
     # DC electrode offsets (v)
 
     # #For Innsbruck trap:
@@ -1194,50 +1202,116 @@ def main_2():
     #     "DC10": outer,
     #     "DC11": center,
     #     "DC12": outer,
-    #     "RF1": 0,
-    #     "RF2": 0,
+    #     "RF1": 0 - offset_RF,
+    #     "RF2": 0 - offset_RF,
     # }
 
     #For Roman`s traps:
 
+    # dc_offsets = {
+    #     "DC1": outer,
+    #     "DC2": inner,
+    #     "DC3": center,
+    #     "DC4": inner,
+    #     "DC5": outer,
+    #     "DC6": outer,
+    #     "DC7": inner,
+    #     "DC8": center,
+    #     "DC9": inner,
+    #     "DC10": outer,
+    #     "DC11": outer,
+    #     "DC12": inner,
+    #     "DC13": center,
+    #     "DC14": inner,
+    #     "DC15": outer,
+    #     "DC16": outer,
+    #     "DC17": inner,
+    #     "DC18": center,
+    #     "DC19": inner,
+    #     "DC20": outer,
+    #     "RF1": 20 - offset_RF,
+    #     "RF2": 20- offset_RF,
+    # }
+
+#      #For Tsighua`s config. in Roman`s traps`:
+
+# #Ratio nc/c = 5
+#     nc = 1.5*60#1.5
+#     c = 0#0.3
+#     gnd = 0#0
+
+#     dc_offsets = {
+#         "DC1": gnd,
+#         "DC2": gnd,
+#         "DC3": c,
+#         "DC4": gnd,
+#         "DC5": gnd,
+#         "DC6": gnd,
+#         "DC7": nc,
+#         "DC8": gnd,
+#         "DC9": nc,
+#         "DC10": gnd,
+#         "DC11":gnd,
+#         "DC12": gnd,
+#         "DC13": c,
+#         "DC14": gnd,
+#         "DC15": gnd,
+#         "DC16": gnd,
+#         "DC17": nc,
+#         "DC18": gnd,
+#         "DC19": nc,
+#         "DC20": gnd,
+#         "RF1": 0 - offset_RF,
+#         "RF2": 0 - offset_RF,
+#     }
+
+   #For Charles config. in Roman`s traps`:
+
+# #Ratio nc/c = 5
+    nc = 100 #2
+    c = -50 #0.1
+    end = 100 #0
+
     dc_offsets = {
-        "DC1": outer,
-        "DC2": inner,
-        "DC3": center,
-        "DC4": inner,
-        "DC5": outer,
-        "DC6": outer,
-        "DC7": inner,
-        "DC8": center,
-        "DC9": inner,
-        "DC10": outer,
-        "DC11": outer,
-        "DC12": inner,
-        "DC13": center,
-        "DC14": inner,
-        "DC15": outer,
-        "DC16": outer,
-        "DC17": inner,
-        "DC18": center,
-        "DC19": inner,
-        "DC20": outer,
-        "RF1": 23,
-        "RF2": 23,
+        "DC1": end,
+        "DC2": nc,
+        "DC3": c,
+        "DC4": nc,
+        "DC5": end,
+        "DC6": end,
+        "DC7": nc,
+        "DC8": c,
+        "DC9": nc,
+        "DC10": end,
+        "DC11":end,
+        "DC12": nc,
+        "DC13": c,
+        "DC14": nc,
+        "DC15": end,
+        "DC16": end,
+        "DC17": nc,
+        "DC18": c,
+        "DC19": nc,
+        "DC20": end,
+        "RF1": 20 - offset_RF,
+        "RF2": 20 - offset_RF,
     }
 
 
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("2D_V4_3_125_blades_only_Original_trap", tv)
+    sim = Simulation("2D trap V4.4.125 - c - 45deg 150um ground_exposed_DC", tv)
 
 # 2D trap V4.4.125 - a - 45deg 150um ground
+# 2D_V4_3_125_blades_only_Original_trap
+# 2D trap V4.3.125_Original_exposed_DC
+# 2D trap V4.4.125 - b - 60deg 350um ground
 # 2D trap V4.4.125 - a - 90deg 150um ground
 # 2D trap V4.4.125 - b - 90deg 350um ground
+# 2D trap V4.4.125 - c - 45deg 150um ground_exposed_DC
 # 2D_Innsbruck_Charles
 # 2D_Innsbruck_Evan
-# 2D_V4_3_125_blades_only_Original_trap
-# 2D trap V4.4.125 - b - 60deg 350um ground
 
     # Build fits, equilibrium, and single-ion modes
     sim._smoke_test_new_stack(n_ions=1, poly_deg=4)
@@ -1337,26 +1411,29 @@ def main_2():
 
     eq_pos = sim.ion_equilibrium_positions.get(1)
     print("Single-ion equilibrium position (m):", eq_pos)
-    
-    fig1 = sim.plot_total_voltage_plane_cuts()
+
+    #fig1 = sim.plot_total_voltage_plane_cuts()
     fig = sim.plot_total_voltage_along_axes()
+
     plt.show()
 
-    sim.plot_total_MM_magnitude()
+# ************************************* Comment below in order to not plot the micromotion and E field **************************************************
 
-    Y, Z, E, x0 = sim.get_yz_plane_E_magnitude(
-        span_um=30.0,
-        x_center_m=0.0,
-        drive=sim.trapVariables.dc_key,
-    )
+    # sim.plot_total_MM_magnitude()
 
-    fig, ax = plt.subplots(1, 1, figsize=(5.2, 4.4), constrained_layout=True)
-    im = ax.contourf(Y * 1e6, Z * 1e6, E, levels=40, cmap="viridis")
-    ax.set_title(f"|E| @ x={x0 * 1e6:.3g} um (DC drive)")
-    ax.set_xlabel("y (um)")
-    ax.set_ylabel("z (um)")
-    fig.colorbar(im, ax=ax, label="|E| (V/m)")
-    plt.show()
+    # Y, Z, E, x0 = sim.get_yz_plane_E_magnitude(
+    #     span_um=30.0,
+    #     x_center_m=0.0,
+    #     drive=sim.trapVariables.dc_key,
+    # )
+
+    # fig, ax = plt.subplots(1, 1, figsize=(5.2, 4.4), constrained_layout=True)
+    # im = ax.contourf(Y * 1e6, Z * 1e6, E, levels=40, cmap="viridis")
+    # ax.set_title(f"|E| @ x={x0 * 1e6:.3g} um (DC drive)")
+    # ax.set_xlabel("y (um)")
+    # ax.set_ylabel("z (um)")
+    # fig.colorbar(im, ax=ax, label="|E| (V/m)")
+    # plt.show()
 
 
 def main_3():
@@ -1366,9 +1443,9 @@ def main_3():
     tv = Trapping_Vars()
 
     # RF drive setup
-    rf_freq_hz = (43) * 10**6
-    rf_amp_rf1 = 515
-    rf_amp_rf2 = 515
+    rf_freq_hz = (32) * 10**6
+    rf_amp_rf1 = 570
+    rf_amp_rf2 = 570
     tv.add_driving("RF", rf_freq_hz, 0.0, {"RF1": rf_amp_rf1, "RF2": rf_amp_rf2})
     outer = 0
     inner = 0

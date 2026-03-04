@@ -11,6 +11,7 @@ import constants
 from trapping_variables import drive_colname  # single source of truth for column names
 
 
+
 class VoltageInterfaceMixin:
     """
     Methods that *read* voltage data from the grid/DF to compute values/gradients/minima.
@@ -346,95 +347,315 @@ class VoltageInterfaceMixin:
             / (2 * np.pi)
         )
 
-    def plot_total_voltage_along_axes(self, width_um = [1000,1000,1000]):
-        """
-        Plot TotalV along x, y, z axes and return the figure (no plt.show).
+    def plot_total_voltage_along_axes(self, width_um=[100, 20, 20]):
 
-        Args:
-            width_um: [xwidth, ywidth, zwidth] in microns
-        """
         if len(width_um) != 3:
             raise ValueError("width_um must be [xwidth, ywidth, zwidth]")
 
-        widths = {
-            "x": float(width_um[0]),
-            "y": float(width_um[1]),
-            "z": float(width_um[2]),
-        }
+        df = self.total_voltage_df
+        if df is None or df.empty:
+            raise ValueError("Total voltage dataframe is empty.")
 
-        fig, axes = plt.subplots(1, 3, figsize=(12, 3.8), constrained_layout=True)
+        required_cols = ["Static_TotalV", "Static_RFPseudoV", "Static_DCV"]
+        for col in required_cols:
+            if col not in df.columns:
+                raise KeyError(f"{col} not found. Run update_total_voltage_columns().")
 
-        for ax_key, ax_plot in zip(("x", "y", "z"), axes):
-            # use existing single-axis plotter but render on provided axis
-            axis = ax_key
-            df = self.total_voltage_df
-            if df is None or df.empty:
-                raise ValueError("Total voltage dataframe is empty.")
+        widths = dict(zip(("x", "y", "z"), map(float, width_um)))
 
-            value_col = "Static_TotalV" if "Static_TotalV" in df.columns else "TotalV"
-            if value_col not in df.columns:
-                raise KeyError(
-                    "No total voltage column found (Static_TotalV or TotalV)."
+        fig, axes = plt.subplots(3, 3, figsize=(14, 10), constrained_layout=True)
+
+        tol = {}
+        for ax in ("x", "y", "z"):
+            uniq = np.sort(df[ax].unique())
+            tol[ax] = 0.0 if len(uniq) < 2 else 0.5 * float(np.min(np.diff(uniq)))
+
+        potential_map = {0: "Static_TotalV", 1: "Static_RFPseudoV", 2: "Static_DCV"}
+        row_titles = {0: "Total", 1: "RF only", 2: "DC only"}
+
+        # store secular frequencies for ratio calculation
+        sec_freq = {}
+
+        for row in range(3):
+            value_col = potential_map[row]
+
+            for col, axis in enumerate(("x", "y", "z")):
+                ax_plot = axes[row, col]
+                width_m = widths[axis] * 1e-6
+
+                filters = [df[axis].between(-width_m, width_m)]
+                for other_ax in ("x", "y", "z"):
+                    if other_ax != axis:
+                        filters.append(df[other_ax].between(-tol[other_ax], tol[other_ax]))
+
+                mask = np.logical_and.reduce(filters)
+                cutout = df[mask].copy()
+                if cutout.empty:
+                    raise ValueError(f"No points found on {axis}-axis within width.")
+
+                cutout.sort_values(axis, inplace=True)
+                axis_vals = cutout[axis].to_numpy()
+                volt_vals = cutout[value_col].to_numpy()
+
+                # fits
+                coeffs2 = np.polyfit(axis_vals, volt_vals, 2)
+                coeffs4 = np.polyfit(axis_vals, volt_vals, 4)
+                poly2 = np.poly1d(coeffs2)
+                poly4 = np.poly1d(coeffs4)
+
+                xs = np.linspace(axis_vals.min(), axis_vals.max(), 400)
+
+                ax_plot.scatter(axis_vals * 1e6, volt_vals, s=10, alpha=0.7)
+                ax_plot.plot(xs * 1e6, poly2(xs), color="orange", label="deg2 fit")
+                ax_plot.plot(xs * 1e6, poly4(xs), color="red", label="deg4 fit")
+
+                # quartic curvature at 0
+                a, b, c, d, e = coeffs4
+                d2 = 2.0 * c
+                freq_hz = self._secular_freq_from_second_derivative(d2)
+                sec_freq[axis] = freq_hz
+
+                # label text
+                label_lines = [f"d2V/d{axis}2 = {d2:.3e}", f"sec f = {freq_hz:.3e} Hz"]
+
+                # add ratio sec f z/x for total potential row
+                if row == 0 and all(k in sec_freq for k in ("x", "z")):
+                    ratio = sec_freq["z"] / sec_freq["x"]
+                    label_lines.append(f"sec f_z / sec f_x = {ratio:.5f}")
+
+                # add q_vert for RF-only row
+                if row == 1 and axis == "z":
+                    q_vert = (2 * np.sqrt(2) * freq_hz) / ((36) * 10**6) # Change here the RF_Drive_Frequency
+                    label_lines.append(f"q_vert = {q_vert:.5f}")
+
+                ax_plot.text(
+                    0.02,
+                    0.98,
+                    "\n".join(label_lines),
+                    transform=ax_plot.transAxes,
+                    va="top",
+                    ha="left",
+                    fontsize=8,
+                    bbox={"boxstyle": "round", "fc": "white", "ec": "0.8", "alpha": 0.9},
                 )
 
-            tol = {}
-            for ax in ("x", "y", "z"):
-                uniq = np.sort(df[ax].unique())
-                if len(uniq) < 2:
-                    tol[ax] = 0.0
-                else:
-                    tol[ax] = 0.5 * float(np.min(np.diff(uniq)))
+                if row == 0:
+                    ax_plot.set_title(f"{axis}-axis")
+                if col == 0:
+                    ax_plot.set_ylabel(f"{row_titles[row]}\nPotential (V)")
+                if row == 2:
+                    ax_plot.set_xlabel(f"{axis} (µm)")
 
-            width_m = widths[axis] * 1e-6
-            filters = [df[axis].between(-width_m, width_m)]
-            for ax in ("x", "y", "z"):
-                if ax == axis:
-                    continue
-                filters.append(df[ax].between(-tol[ax], tol[ax]))
-
-            mask = np.logical_and.reduce(filters)
-            cutout = df[mask].copy()
-            if cutout.empty:
-                raise ValueError(f"No points found on {axis}-axis within width.")
-
-            cutout.sort_values(axis, inplace=True)
-            axis_vals = cutout[axis].to_numpy()
-            volt_vals = cutout[value_col].to_numpy()
-
-            # fits
-            coeffs2 = np.polyfit(axis_vals, volt_vals, 2)
-            coeffs4 = np.polyfit(axis_vals, volt_vals, 4)
-            poly2 = np.poly1d(coeffs2)
-            poly4 = np.poly1d(coeffs4)
-
-            xs = np.linspace(axis_vals.min(), axis_vals.max(), 400)
-            ax_plot.scatter(axis_vals * 1e6, volt_vals, s=10, alpha=0.7, label="data")
-            ax_plot.plot(xs * 1e6, poly2(xs), color="orange", label="deg2 fit")
-            ax_plot.plot(xs * 1e6, poly4(xs), color="red", label="deg4 fit")
-
-            # second derivative from quartic at x=0: if coeffs4 = [a,b,c,d,e]
-            # V(x) = a x^4 + b x^3 + c x^2 + d x + e => V''(0) = 2c
-            a, b, c, d, e = coeffs4
-            d2 = 2.0 * c
-            freq_hz = self._secular_freq_from_second_derivative(d2)
-
-            ax_plot.text(
-                0.02,
-                0.98,
-                f"d2V/d{axis}2={d2:.3e}\nsec f={freq_hz:.3e} Hz",
-                transform=ax_plot.transAxes,
-                va="top",
-                ha="left",
-                fontsize=9,
-                bbox={"boxstyle": "round", "fc": "white", "ec": "0.8", "alpha": 0.9},
-        )            
-            ax_plot.set_title(f"{value_col} along {axis}-axis")
-            ax_plot.set_xlabel(f"{axis} (um)")
-            ax_plot.set_ylabel(value_col)
-            ax_plot.legend()
-
+                ax_plot.grid(True)
 
         return fig
+
+# This function here was a change to plot all the graphs for Total potential, DC only and RF only******************************************************
+
+    # def plot_total_voltage_along_axes(self, width_um=[100, 20, 20]):
+    # # """
+    # # 3x3 grid:
+
+    # #     Row 1 -> Total potential (x, y, z)
+    # #     Row 2 -> RF pseudopotential (x, y, z)
+    # #     Row 3 -> DC only (x, y, z)
+
+    # # Includes quadratic & quartic fits and secular frequency extraction.
+    # # """
+
+    #     if len(width_um) != 3:
+    #         raise ValueError("width_um must be [xwidth, ywidth, zwidth]")
+
+    #     df = self.total_voltage_df
+    #     if df is None or df.empty:
+    #         raise ValueError("Total voltage dataframe is empty.")
+
+    #     required_cols = ["Static_TotalV", "Static_RFPseudoV", "Static_DCV"]
+    #     for col in required_cols:
+    #         if col not in df.columns:
+    #             raise KeyError(f"{col} not found. Run update_total_voltage_columns().")
+
+    #     widths = dict(zip(("x", "y", "z"), map(float, width_um)))
+
+    #     fig, axes = plt.subplots(3, 3, figsize=(14, 10), constrained_layout=True)
+
+    #     # precompute tolerances
+    #     tol = {}
+    #     for ax in ("x", "y", "z"):
+    #         uniq = np.sort(df[ax].unique())
+    #         if len(uniq) < 2:
+    #             tol[ax] = 0.0
+    #         else:
+    #             tol[ax] = 0.5 * float(np.min(np.diff(uniq)))
+
+    #     potential_map = {
+    #         0: "Static_TotalV",
+    #         1: "Static_RFPseudoV",
+    #         2: "Static_DCV",
+    #     }
+
+    #     row_titles = {
+    #         0: "Total",
+    #         1: "RF only",
+    #         2: "DC only",
+    #     }
+
+    #     for row in range(3):
+    #         value_col = potential_map[row]
+
+    #         for col, axis in enumerate(("x", "y", "z")):
+    #             ax_plot = axes[row, col]
+
+    #             width_m = widths[axis] * 1e-6
+
+    #             filters = [df[axis].between(-width_m, width_m)]
+    #             for other_ax in ("x", "y", "z"):
+    #                 if other_ax == axis:
+    #                     continue
+    #                 filters.append(df[other_ax].between(-tol[other_ax], tol[other_ax]))
+
+    #             mask = np.logical_and.reduce(filters)
+    #             cutout = df[mask].copy()
+
+    #             if cutout.empty:
+    #                 raise ValueError(f"No points found on {axis}-axis within width.")
+
+    #             cutout.sort_values(axis, inplace=True)
+    #             axis_vals = cutout[axis].to_numpy()
+    #             volt_vals = cutout[value_col].to_numpy()
+
+    #             # fits
+    #             coeffs2 = np.polyfit(axis_vals, volt_vals, 2)
+    #             coeffs4 = np.polyfit(axis_vals, volt_vals, 4)
+    #             poly2 = np.poly1d(coeffs2)
+    #             poly4 = np.poly1d(coeffs4)
+
+    #             xs = np.linspace(axis_vals.min(), axis_vals.max(), 400)
+
+    #             ax_plot.scatter(axis_vals * 1e6, volt_vals, s=10, alpha=0.7)
+    #             ax_plot.plot(xs * 1e6, poly2(xs), color="orange", label="deg2 fit")
+    #             ax_plot.plot(xs * 1e6, poly4(xs), color="red", label="deg4 fit")
+
+    #             # quartic curvature at 0
+    #             a, b, c, d, e = coeffs4
+    #             d2 = 2.0 * c
+    #             freq_hz = self._secular_freq_from_second_derivative(d2)
+
+    #             ax_plot.text(
+    #                 0.02,
+    #                 0.98,
+    #                 f"d2V/d{axis}2 = {d2:.3e}\nsec f = {freq_hz:.3e} Hz",
+    #                 transform=ax_plot.transAxes,
+    #                 va="top",
+    #                 ha="left",
+    #                 fontsize=8,
+    #                 bbox={"boxstyle": "round", "fc": "white", "ec": "0.8", "alpha": 0.9},
+    #             )
+
+    #             if row == 0:
+    #                 ax_plot.set_title(f"{axis}-axis")
+
+    #             if col == 0:
+    #                 ax_plot.set_ylabel(f"{row_titles[row]}\nPotential (V)")
+
+    #             if row == 2:
+    #                 ax_plot.set_xlabel(f"{axis} (µm)")
+
+    #             ax_plot.grid(True)
+
+    #     return fig
+    
+    #*******************************************************************************************************
+
+    # def plot_total_voltage_along_axes(self, width_um = [1000,1000,1000]):
+    #     """
+    #     Plot TotalV along x, y, z axes and return the figure (no plt.show).
+
+    #     Args:
+    #         width_um: [xwidth, ywidth, zwidth] in microns
+    #     """
+    #     if len(width_um) != 3:
+    #         raise ValueError("width_um must be [xwidth, ywidth, zwidth]")
+
+    #     widths = {
+    #         "x": float(width_um[0]),
+    #         "y": float(width_um[1]),
+    #         "z": float(width_um[2]),
+    #     }
+
+    #     fig, axes = plt.subplots(1, 3, figsize=(12, 3.8), constrained_layout=True)
+
+    #     for ax_key, ax_plot in zip(("x", "y", "z"), axes):
+    #         # use existing single-axis plotter but render on provided axis
+    #         axis = ax_key
+    #         df = self.total_voltage_df
+    #         if df is None or df.empty:
+    #             raise ValueError("Total voltage dataframe is empty.")
+
+    #         value_col = "Static_TotalV" if "Static_TotalV" in df.columns else "TotalV"
+    #         if value_col not in df.columns:
+    #             raise KeyError(
+    #                 "No total voltage column found (Static_TotalV or TotalV)."
+    #             )
+
+    #         tol = {}
+    #         for ax in ("x", "y", "z"):
+    #             uniq = np.sort(df[ax].unique())
+    #             if len(uniq) < 2:
+    #                 tol[ax] = 0.0
+    #             else:
+    #                 tol[ax] = 0.5 * float(np.min(np.diff(uniq)))
+
+    #         width_m = widths[axis] * 1e-6
+    #         filters = [df[axis].between(-width_m, width_m)]
+    #         for ax in ("x", "y", "z"):
+    #             if ax == axis:
+    #                 continue
+    #             filters.append(df[ax].between(-tol[ax], tol[ax]))
+
+    #         mask = np.logical_and.reduce(filters)
+    #         cutout = df[mask].copy()
+    #         if cutout.empty:
+    #             raise ValueError(f"No points found on {axis}-axis within width.")
+
+    #         cutout.sort_values(axis, inplace=True)
+    #         axis_vals = cutout[axis].to_numpy()
+    #         volt_vals = cutout[value_col].to_numpy()
+
+    #         # fits
+    #         coeffs2 = np.polyfit(axis_vals, volt_vals, 2)
+    #         coeffs4 = np.polyfit(axis_vals, volt_vals, 4)
+    #         poly2 = np.poly1d(coeffs2)
+    #         poly4 = np.poly1d(coeffs4)
+
+    #         xs = np.linspace(axis_vals.min(), axis_vals.max(), 400)
+    #         ax_plot.scatter(axis_vals * 1e6, volt_vals, s=10, alpha=0.7, label="data")
+    #         ax_plot.plot(xs * 1e6, poly2(xs), color="orange", label="deg2 fit")
+    #         ax_plot.plot(xs * 1e6, poly4(xs), color="red", label="deg4 fit")
+
+    #         # second derivative from quartic at x=0: if coeffs4 = [a,b,c,d,e]
+    #         # V(x) = a x^4 + b x^3 + c x^2 + d x + e => V''(0) = 2c
+    #         a, b, c, d, e = coeffs4
+    #         d2 = 2.0 * c
+    #         freq_hz = self._secular_freq_from_second_derivative(d2)
+
+    #         ax_plot.text(
+    #             0.02,
+    #             0.98,
+    #             f"d2V/d{axis}2={d2:.3e}\nsec f={freq_hz:.3e} Hz",
+    #             transform=ax_plot.transAxes,
+    #             va="top",
+    #             ha="left",
+    #             fontsize=9,
+    #             bbox={"boxstyle": "round", "fc": "white", "ec": "0.8", "alpha": 0.9},
+    #     )            
+    #         ax_plot.set_title(f"{value_col} along {axis}-axis")
+    #         ax_plot.set_xlabel(f"{axis} (um)")
+    #         ax_plot.set_ylabel(value_col)
+    #         ax_plot.legend()
+
+
+    #     return fig
 
     def plot_total_voltage_plane_cuts(self, n: int = 120, poly_deg: int | None = None):
         """
