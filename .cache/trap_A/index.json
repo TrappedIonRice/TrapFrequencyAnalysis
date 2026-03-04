@@ -1030,6 +1030,316 @@
       "path": "Simp58_101\\deg4\\cf728e2c9150.npz",
       "polyfit_deg": 4,
       "trap_name": "Simp58_101"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "nd_L0_m": 1e-05,
+        "num_samples": 20,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          112.57909293593089
+        ],
+        "seed": 0,
+        "trap_name": "1252dTrapRice",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 4,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "1252dTrapRice",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-03T20:49:32.710553+00:00",
+      "fit_rel_rmse": 1.993215867979427e-17,
+      "key": "85403bc8b808c27f22cd43e02838fdf987b47901a8c017480f63313d3767eff8",
+      "key12": "85403bc8b808",
+      "path": "1252dTrapRice\\deg4\\85403bc8b808.npz",
+      "polyfit_deg": 4,
+      "trap_name": "1252dTrapRice"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12"
+        ],
+        "nd_L0_m": 1e-05,
+        "num_samples": 20,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          112.57909293593089
+        ],
+        "seed": 0,
+        "trap_name": "InnTrapFine",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12"
+        ],
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 4,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "InnTrapFine",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-03T23:22:13.736891+00:00",
+      "fit_rel_rmse": 1.0925663714471852e-16,
+      "key": "1ea93082790d2a10d2e4ad2f00539db9a01a2bc5e1f40049a14508f7c66e6c34",
+      "key12": "1ea93082790d",
+      "path": "InnTrapFine\\deg4\\1ea93082790d.npz",
+      "polyfit_deg": 4,
+      "trap_name": "InnTrapFine"
     }
   ],
   "schema_version": "1"

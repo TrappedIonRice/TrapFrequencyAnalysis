@@ -1,7 +1,7 @@
 """
-Dummy inverse-design runner for InnTrapFine.
+demo for inverse-design runner.
 
-This is a minimal, hard-coded example that wires the optimization together.
+This is a minimal, hard-coded example that wires the inverse problem pipeline together.
 """
 
 from __future__ import annotations
@@ -14,49 +14,116 @@ from trapping_variables import Trapping_Vars
 import time
 import constants
 
+#NOTE: The matrix A is built by sampling random inputs and fitting the linear system
+# this takes quite a bit as each point means a run in the forward direction
+# to cut down on time there is a system to cache the matrix A -- it is not full proof at the moment
+# but id say its 95 percent full proof...
+# anyway this A is saved and has a tag on it that identifies it, if you run this pipeline with the same tag
+# then the stored A is used, otherwise a new A is built (takes a few minuites)
+# this tag consists of the trap name, the number of dc_electrodes, the box in which the fits are done (from constants.py)
+# a nondimensionalized unit, degree of polyfit
+# if any of these change then a new A will be triggered, beware!
+# to be clear making new A is not a bad thing, the file is small, the time is just a bit annoying
+
+
 
 def run_demo() -> None:
     start_time = time.time()
-    # Target specification (hard-coded demo values)
+
+    ### Target specification (hard-coded demo values) ###
+
+    # Eq position you want
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
+
+    # Mode freq you want in Hz
     freqs = np.array(
-        [0.360e6, 1.910e6, 2.320e6], dtype=float
+        [0.300e6, 0.600e6, 1.900e6], dtype=float
     )  # Hz
+
+    # Principle directions. "Princ_axis" defines the first principal direction,
+    # and "ref_dir" "alpha_deg" are used to define the other two by:
+    # The second principle direction is ref_dir projected onto the plane orthogonal to princ_axis,
+    # and then rotated by alpha_deq away from this projection (right handed rotation)
+    # The thrid is defined by the first two.
     principal_axis = [1.0, 0.0, 0.0]
-    ref_dir = [0.0, 1.0, 0.0]
-    alpha_deg =30
+    ref_dir = [0.0, 0.0, 1.0]
+    alpha_deg =0
+
+    # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *
+    # the following defines which trap to use, its electrodes, and the bounds on the control voltages
+    # Note that u is a row vector of the form [DC1, DC2, ..., RF1_DC, RF2_DC, s]
+    # where s = V_rf^2 / omega_rf^2, this is the linear pseudopotential "strength" parameter
+    # Below are three parameters
 
     # Trap/fit configuration for InnTrapFine
-    trap_name = "Simp58_101"
-    dc_electrodes = [f"DC{i}" for i in range(1, 11)]
+    trap_name = "InnTrapFine"
+    dc_electrodes = [f"DC{i}" for i in range(1, 13)]
 
     u_bounds = (
-        [(-1000, 1000)] * 10  # DC1..DC10
+        [(-1000, 1000)] * 12  # DC1..DC10
         + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
         + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
     )
 
+    # # Trap/fit configuration for 1252dTrapRIce
+    # trap_name = "1252dTrapRice"
+    # dc_electrodes = [f"DC{i}" for i in range(1, 21)]
+
+    # u_bounds = (
+    #     [(-1000, 1000)] * 20  # DC1..DC10
+    #     + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
+    #     + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
+    # )
+
+    # # Trap/fit configuration for Simp58_101
+    # trap_name = "Simp58_101"
+    # dc_electrodes = [f"DC{i}" for i in range(1, 11)]
+
+    # u_bounds = (
+    #     [(-1000, 1000)] * 10  # DC1..DC10
+    #     + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
+    #     + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
+    # )
+
+    # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *
+
     # Demo forward-check uses reference frequency to match A-model.
+
+    # This is just the ref_hz, what you make it
+    # only changes the presentation of the result when s split back into RFamp and RFfreq
     rf_freq_hz = constants.RF_FREQ_REF_HZ
 
+    # This is the minimization used:
+    min_objective = "l2_dc"  # minimize L2 norm of DC voltages this ignores s
+    # your options are: "l2", "linf", "weighted_l2", "avg_max_dc", "l2_dc"
+    # l2 minimizes L2 norm of all
+    # linf minimizes L-inf norm of all
+    # weighted_l2 minimizes a weighted L2 norm of all, with s weighted by s_penalty_scale
+    # avg_max_dc minimizes the average of the max static v on the DC and the max static v on the RF
+    # IMPORTANT: Just use l2_dc and allow bounds to check s
+
+    # wheather to take into acount the given bounds or not
+    enforce_bounds_on_u = False
+
+    # the call of the inverse pipeline
     out = solve_u_for_targets(
         r0=r0,
         freqs=freqs,
         principal_axis=principal_axis,
         ref_dir=ref_dir,
         alpha_deg=alpha_deg,
-        ion_mass_kg=constants.ion_mass,  # example: 40Ca+ in kg
-        ion_charge_c=1.602176634e-19,
+        ion_mass_kg=constants.ion_mass, 
+        ion_charge_c=constants.ion_charge,
         poly_is_potential_energy=False,
         freqs_in_hz=True,
         trap_name=trap_name,
         dc_electrodes=dc_electrodes,
-        num_samples=20,
+        num_samples=30, # just how many sample to sample when defining A
         s_bounds=(0.0, constants.RF_S_MAX_DEFAULT),
         polyfit_deg=4,
-        objective="l2_dc",
-        s_penalty_scale=1e-7,
-        enforce_bounds=False,
+        objective=min_objective,
+        s_penalty_scale=1e-7, # not used
+        enforce_bounds=enforce_bounds_on_u,
         u_bounds=u_bounds,
     )
 
@@ -75,7 +142,8 @@ def run_demo() -> None:
         print("Solve failed; solver_info:", out["solver_info"])
         return
 
-    # Run simulation with the found u to inspect principal directions and freqs
+
+    # Run simulation with the found u to compare principal directions and freqs
     u = out["u"]
     s = float(out["u_s"])
     # s = V_rf^2 / omega_mhz^2 with omega_mhz = (2*pi*f_rf_hz)/1e6, so rf_amp is in volts.

@@ -243,8 +243,8 @@ if __name__ == "__main__":
     principal_axis = [1.0, 0.0, 0.0]
     ref_dir = [0.0, 1.0, 0.0]
     alpha_deg = 0.0
-    mass = 6.64e-26  # example: 40Ca+ in kg
-    charge = 1.602176634e-19  # elementary charge in C
+    mass = 6.64e-26  # example --- 40Ca+, kg
+    charge = 1.602176634e-19  #  charge in C
 
     Kstar = build_target_hessian(
         freqs,

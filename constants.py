@@ -98,7 +98,7 @@ center_region_z_um = center_region_y_um
 # center_region_z_um = 25
 
 # Reference RF frequency used for A-matrix construction (Hz)
-RF_FREQ_REF_HZ = 43e6
+RF_FREQ_REF_HZ = 60e6
 # Use omega in MHz units for s: omega_MHz = 2*pi*(f_Hz/1e6)
 # This is omega/1e6 (rad/s scaled to MHz units), used in s definition.
 RF_OMEGA_REF_MHZ = 2.0 * np.pi * (RF_FREQ_REF_HZ / 1e6)
