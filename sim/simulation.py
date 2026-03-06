@@ -1267,7 +1267,6 @@ def main_2():
 
    #For Charles config. in Roman`s traps`:
 
-# #Ratio nc/c = 5
     nc = 100 #2
     c = -50 #0.1
     end = 100 #0
@@ -1301,7 +1300,7 @@ def main_2():
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("2D trap V4.4.125 - c - 45deg 150um ground_exposed_DC", tv)
+    sim = Simulation("2D trap V4.4.125 - c - 45deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1", tv)
 
 # 2D trap V4.4.125 - a - 45deg 150um ground
 # 2D_V4_3_125_blades_only_Original_trap
@@ -1310,6 +1309,9 @@ def main_2():
 # 2D trap V4.4.125 - a - 90deg 150um ground
 # 2D trap V4.4.125 - b - 90deg 350um ground
 # 2D trap V4.4.125 - c - 45deg 150um ground_exposed_DC
+# 2D trap V4.4.125 - c - 65deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1
+# 2D trap V4.4.125 - c - 90deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1
+# 2D trap V4.4.125 - c - 45deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1
 # 2D_Innsbruck_Charles
 # 2D_Innsbruck_Evan
 
