@@ -35,7 +35,7 @@ def run_demo() -> None:
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
 
     # Mode freq you want in Hz
-    freqs = np.array([0.130e6, 0.600e6, 1.900e6], dtype=float)  # Hz
+    freqs = np.array([0.2e6, 0.4e6, 3.00e6], dtype=float)  # Hz
 
     # Principle directions. "Princ_axis" defines the first principal direction,
     # and "ref_dir" "alpha_deg" are used to define the other two by:
@@ -63,14 +63,14 @@ def run_demo() -> None:
     # )
 
     # # Trap/fit configuration for 1252dTrapRIce
-    trap_name = "1252dTrapRice"
-    dc_electrodes = [f"DC{i}" for i in range(1, 21)]
+    # trap_name = "1252dTrapRice"
+    # dc_electrodes = [f"DC{i}" for i in range(1, 21)]
 
-    u_bounds = (
-        [(-1000, 1000)] * 20  # DC1..DC10
-        + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
-        + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
-    )
+    # u_bounds = (
+    #     [(-1000, 1000)] * 20  # DC1..DC10
+    #     + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
+    #     + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
+    # )
 
     # # Trap/fit configuration for Simp58_101
     # trap_name = "Simp58_101"
@@ -81,6 +81,16 @@ def run_demo() -> None:
     #     + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
     #     + [(0.0, constants.RF_S_MAX_DEFAULT)]  # s = V^2 / omega^2
     # )
+
+    # # Trap/fit configuration for 2Dtrap_125_45deg_200exp
+    trap_name = "2Dtrap_125_45deg_200exp"
+    dc_electrodes = [f"DC{i}" for i in range(1, 21)]
+
+    u_bounds = (
+        [(-1000, 1000)] * 20  # DC1..DC10
+        + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
+        + [(0.0, constants.RF_S_MAX_DEFAULT*100)]  # s = V^2 / omega^2
+    )
 
     # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # * # *
 
@@ -117,7 +127,7 @@ def run_demo() -> None:
         dc_electrodes=dc_electrodes,
         num_samples=30,  # just how many sample to sample when defining A
         s_bounds=(0.0, constants.RF_S_MAX_DEFAULT),
-        polyfit_deg=4,
+        polyfit_deg=6,
         objective=min_objective,
         s_penalty_scale=1e-7,  # not used
         enforce_bounds=enforce_bounds_on_u,
@@ -223,8 +233,8 @@ def run_demo_box() -> None:
     trap_name = "InnTrapFine"
     dc_electrodes = [f"DC{i}" for i in range(1, 13)]
     u_bounds = (
-        [(-1000, 1000)] * 12
-        + [(-1000.00000, 1000.00000)] * 2
+        [(-100, 100)] * 12
+        + [(-100.0000, 100.00000)] * 2
         + [(0.0, constants.RF_S_MAX_DEFAULT)]
     )
 
@@ -390,6 +400,6 @@ def demo_1():
 
 
 if __name__ == "__main__":
-    # run_demo()
-    run_demo_box()
+    run_demo()
+    # run_demo_box()
     # demo_1()

@@ -1652,6 +1652,670 @@
       "path": "InnTrapFine\\deg4\\b46414ad71e7.npz",
       "polyfit_deg": 4,
       "trap_name": "InnTrapFine"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 21.0,
+        "center_region_z_um": 21.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 6.642065e-26,
+        "nd_L0_m": 1e-05,
+        "num_samples": 30,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          112.57909293593089
+        ],
+        "seed": 0,
+        "trap_name": "Simp58_101",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 21.0,
+        "center_region_z_um": 21.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 6.642065e-26,
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 4,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "Simp58_101",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-09T08:43:57.012851+00:00",
+      "fit_rel_rmse": 1.1201566913343584e-16,
+      "key": "1b80cd5f9309ac020631910cc6667563c50a696a282d108e95dad24670f288c7",
+      "key12": "1b80cd5f9309",
+      "path": "Simp58_101\\deg4\\1b80cd5f9309.npz",
+      "polyfit_deg": 4,
+      "trap_name": "Simp58_101"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 21.0,
+        "center_region_z_um": 21.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "ion_mass_kg": 6.642065e-26,
+        "nd_L0_m": 1e-05,
+        "num_samples": 30,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          112.57909293593089
+        ],
+        "seed": 0,
+        "trap_name": "Simp58_101",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 21.0,
+        "center_region_z_um": 21.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "ion_mass_kg": 6.642065e-26,
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 4,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "Simp58_101",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-09T08:46:02.134537+00:00",
+      "fit_rel_rmse": 5.004057379469918e-10,
+      "key": "b2e871d3062505e85201e29061ccdf6346731b6e41d726da2c45d0bb5c6b1821",
+      "key12": "b2e871d30625",
+      "path": "Simp58_101\\deg4\\b2e871d30625.npz",
+      "polyfit_deg": 4,
+      "trap_name": "Simp58_101"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "num_samples": 30,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          112.57909293593089
+        ],
+        "seed": 0,
+        "trap_name": "2Dtrap_125_45deg_200exp",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 4,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "2Dtrap_125_45deg_200exp",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-09T16:32:31.988942+00:00",
+      "fit_rel_rmse": 1.1675845351134594e-16,
+      "key": "2e2fe2b392fe976c0512426a18dd840d9f72e7e9f584e65c1cac966085bee62a",
+      "key12": "2e2fe2b392fe",
+      "path": "2Dtrap_125_45deg_200exp\\deg4\\2e2fe2b392fe.npz",
+      "polyfit_deg": 4,
+      "trap_name": "2Dtrap_125_45deg_200exp"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "num_samples": 30,
+        "polyfit_deg": 6,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          312.71970259980793
+        ],
+        "seed": 0,
+        "trap_name": "2Dtrap_125_45deg_200exp",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 6,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "2Dtrap_125_45deg_200exp",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-09T16:45:59.697852+00:00",
+      "fit_rel_rmse": 3.1812887900277166e-17,
+      "key": "57d0383fd1df4dc14927eed9cacbb2ec0098cdce5b2e2c72ca919dbf42ba8927",
+      "key12": "57d0383fd1df",
+      "path": "2Dtrap_125_45deg_200exp\\deg6\\57d0383fd1df.npz",
+      "polyfit_deg": 6,
+      "trap_name": "2Dtrap_125_45deg_200exp"
     }
   ],
   "schema_version": "1"
