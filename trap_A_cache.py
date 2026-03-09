@@ -147,6 +147,7 @@ def get_or_build_A(
     s_bounds: Tuple[float, float],
     num_samples: int,
     seed: int,
+    ion_mass_kg: float | None = None,
     builder_fn: Callable[..., Dict[str, Any]],
     force_rebuild: bool = False,
 ) -> Dict[str, Any]:
@@ -169,6 +170,8 @@ def get_or_build_A(
         "center_region_z_um": float(constants.center_region_z_um),
         "version": _CACHE_VERSION,
     }
+    if ion_mass_kg is not None:
+        cfg_full["ion_mass_kg"] = float(ion_mass_kg)
 
     # Key should ignore sampling/bounds so changes there do not invalidate A.
     cfg_key = {
@@ -183,6 +186,8 @@ def get_or_build_A(
         "center_region_z_um": float(constants.center_region_z_um),
         "version": _CACHE_VERSION,
     }
+    if ion_mass_kg is not None:
+        cfg_key["ion_mass_kg"] = float(ion_mass_kg)
 
     key = make_cache_key(cfg_key)
     path = cache_file_path(cache_dir, trap_name, polyfit_deg, key)

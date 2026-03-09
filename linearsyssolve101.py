@@ -259,6 +259,7 @@ def build_voltage_to_c_matrix_cached(
     seed: int = 0,
     cache_dir: str = DEFAULT_CACHE_DIR,
     force_rebuild: bool = False,
+    ion_mass_kg: float | None = None,
 ) -> Dict[str, object]:
     return get_or_build_A(
         cache_dir=cache_dir,
@@ -271,6 +272,7 @@ def build_voltage_to_c_matrix_cached(
         s_bounds=s_bounds,
         num_samples=num_samples,
         seed=seed,
+        ion_mass_kg=ion_mass_kg,
         builder_fn=build_voltage_to_c_matrix,
         force_rebuild=force_rebuild,
     )

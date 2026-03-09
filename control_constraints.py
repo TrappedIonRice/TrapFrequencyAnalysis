@@ -23,7 +23,7 @@ Example
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 import numpy as np
 import constants
@@ -66,6 +66,195 @@ def build_target_hessian(
 
     Kstar = scale * (R @ diag @ R.T)
     return Kstar
+
+
+def frequency_bounds_to_curvature_bounds(
+    freq_bounds_hz_or_rad: Sequence[Tuple[float | None, float | None]],
+    *,
+    mass: float,
+    charge: float | None = None,
+    poly_is_potential_energy: bool = True,
+    freqs_in_hz: bool = False,
+) -> List[Tuple[float | None, float | None]]:
+    """
+    Convert per-mode frequency bounds to curvature bounds.
+
+    Each bound is (lower, upper) with None or +/-inf allowed.
+    Curvature mapping follows build_target_hessian conventions:
+      - energy polynomial: lambda = mass * omega^2
+      - electric-potential polynomial: lambda = (mass/charge) * omega^2
+    """
+    if len(freq_bounds_hz_or_rad) != 3:
+        raise ValueError("freq_bounds_hz_or_rad must have length 3")
+
+    if poly_is_potential_energy:
+        scale = float(mass)
+    else:
+        if charge is None:
+            raise ValueError("charge is required when poly_is_potential_energy is False")
+        scale = float(mass) / float(charge)
+
+    out: List[Tuple[float | None, float | None]] = []
+    for i, pair in enumerate(freq_bounds_hz_or_rad):
+        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+            raise ValueError(f"freq_bounds_hz_or_rad[{i}] must be a (lower, upper) pair")
+        lo_f, hi_f = pair
+        lo_c = _frequency_bound_to_curvature(
+            lo_f,
+            scale,
+            freqs_in_hz=freqs_in_hz,
+            is_lower=True,
+            mode_index=i,
+        )
+        hi_c = _frequency_bound_to_curvature(
+            hi_f,
+            scale,
+            freqs_in_hz=freqs_in_hz,
+            is_lower=False,
+            mode_index=i,
+        )
+        if (lo_c is not None) and (hi_c is not None) and (lo_c > hi_c):
+            raise ValueError(f"freq bound lower > upper for mode index {i}")
+        out.append((lo_c, hi_c))
+    return out
+
+
+def build_modal_hessian_functional_coeffs(
+    p_vec: Sequence[float],
+    q_vec: Sequence[float],
+) -> np.ndarray:
+    """
+    Return coefficients for p^T H q in vech(H) ordering [xx, yy, zz, xy, xz, yz].
+    """
+    p = np.asarray(p_vec, dtype=float).reshape(3)
+    q = np.asarray(q_vec, dtype=float).reshape(3)
+    return np.array(
+        [
+            p[0] * q[0],
+            p[1] * q[1],
+            p[2] * q[2],
+            p[0] * q[1] + p[1] * q[0],
+            p[0] * q[2] + p[2] * q[0],
+            p[1] * q[2] + p[2] * q[1],
+        ],
+        dtype=float,
+    )
+
+
+def build_modal_hessian_functional_row(
+    vech_rows: Sequence[np.ndarray],
+    p_vec: Sequence[float],
+    q_vec: Sequence[float],
+) -> np.ndarray:
+    """
+    Build a row r such that r @ c = p^T H(c) q at the evaluation point.
+    """
+    if len(vech_rows) != 6:
+        raise ValueError("vech_rows must be length 6 in [xx, yy, zz, xy, xz, yz] order")
+    coeffs = build_modal_hessian_functional_coeffs(p_vec, q_vec)
+    out = np.zeros_like(np.asarray(vech_rows[0], dtype=float))
+    for a, row in zip(coeffs, vech_rows):
+        out = out + float(a) * np.asarray(row, dtype=float)
+    return out
+
+
+def build_modal_constraints_for_point(
+    powers: np.ndarray,
+    r0: Sequence[float],
+    *,
+    principal_axis: Sequence[float],
+    ref_dir: Sequence[float],
+    alpha_deg: float,
+    freq_bounds_hz_or_rad: Sequence[Tuple[float | None, float | None]],
+    mass: float,
+    charge: float | None = None,
+    poly_is_potential_energy: bool = True,
+    freqs_in_hz: bool = False,
+    include_gradient: bool = True,
+    basis: str = "nondim",
+    nd_L0_m: float | None = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Build modal-basis constraints at r0.
+
+    Equalities:
+      - grad = 0 (optional)
+      - h12 = h13 = h23 = 0 in prescribed principal basis
+      - h_ii = target when lower==upper for a mode
+    Inequalities:
+      - lower_i <= h_ii <= upper_i for finite one-sided/two-sided bounds
+        represented as G_ub @ c <= h_ub
+    """
+    p = np.asarray(powers, dtype=int)
+    if p.ndim != 2 or p.shape[1] != 3:
+        raise ValueError("powers must be (M, 3)")
+    r0v = np.asarray(r0, dtype=float).reshape(-1)
+    if r0v.shape[0] != 3:
+        raise ValueError("r0 must have length 3")
+    if basis not in ("nondim", "physical"):
+        raise ValueError("basis must be 'nondim' or 'physical'")
+
+    L0 = float(constants.ND_L0_M if nd_L0_m is None else nd_L0_m)
+    if basis == "nondim":
+        r_eval = r0v / L0
+    else:
+        r_eval = r0v
+
+    dx, dy, dz = build_derivative_rows(p, r_eval)
+    dxx, dyy, dzz, dxy, dxz, dyz = build_hessian_rows(p, r_eval)
+    vech_rows = [dxx, dyy, dzz, dxy, dxz, dyz]
+
+    R = rotation_from_axis_ref_alpha(principal_axis, ref_dir, alpha_deg)
+
+    eq_rows: List[np.ndarray] = []
+    b_eq: List[float] = []
+    if include_gradient:
+        eq_rows.extend([dx, dy, dz])
+        b_eq.extend([0.0, 0.0, 0.0])
+
+    for i, j in ((0, 1), (0, 2), (1, 2)):
+        row = build_modal_hessian_functional_row(vech_rows, R[:, i], R[:, j])
+        eq_rows.append(row)
+        b_eq.append(0.0)
+
+    curv_bounds = frequency_bounds_to_curvature_bounds(
+        freq_bounds_hz_or_rad,
+        mass=mass,
+        charge=charge,
+        poly_is_potential_energy=poly_is_potential_energy,
+        freqs_in_hz=freqs_in_hz,
+    )
+    if basis == "nondim":
+        curv_bounds = [
+            (
+                None if lo is None else float(lo) * (L0**2),
+                None if hi is None else float(hi) * (L0**2),
+            )
+            for lo, hi in curv_bounds
+        ]
+
+    ub_rows: List[np.ndarray] = []
+    h_ub: List[float] = []
+    for i in range(3):
+        row = build_modal_hessian_functional_row(vech_rows, R[:, i], R[:, i])
+        lo, hi = curv_bounds[i]
+        if lo is not None and hi is not None and _bounds_equal(lo, hi):
+            eq_rows.append(row)
+            b_eq.append(float(lo))
+            continue
+        if lo is not None:
+            ub_rows.append(-row)
+            h_ub.append(-float(lo))
+        if hi is not None:
+            ub_rows.append(row)
+            h_ub.append(float(hi))
+
+    m = p.shape[0]
+    L_eq = np.vstack(eq_rows).astype(float) if eq_rows else np.zeros((0, m), dtype=float)
+    b_eq_arr = np.asarray(b_eq, dtype=float)
+    G_ub = np.vstack(ub_rows).astype(float) if ub_rows else np.zeros((0, m), dtype=float)
+    h_ub_arr = np.asarray(h_ub, dtype=float)
+    return L_eq, b_eq_arr, G_ub, h_ub_arr
 
 
 def build_L_b_for_point(
@@ -159,6 +348,37 @@ def _vech_symmetric(M3: np.ndarray) -> np.ndarray:
         [M3[0, 0], M3[1, 1], M3[2, 2], M3[0, 1], M3[0, 2], M3[1, 2]],
         dtype=float,
     )
+
+
+def _frequency_bound_to_curvature(
+    val: float | None,
+    scale: float,
+    *,
+    freqs_in_hz: bool,
+    is_lower: bool,
+    mode_index: int,
+) -> float | None:
+    if val is None:
+        return None
+    vf = float(val)
+    if np.isnan(vf):
+        raise ValueError("frequency bounds cannot be NaN")
+    if np.isinf(vf):
+        if is_lower:
+            if vf > 0:
+                raise ValueError(f"lower frequency bound cannot be +inf for mode index {mode_index}")
+            return None
+        if vf < 0:
+            raise ValueError(f"upper frequency bound cannot be -inf for mode index {mode_index}")
+        return None
+    if vf < 0.0:
+        raise ValueError("frequency bounds must be nonnegative when finite")
+    omega = 2.0 * np.pi * vf if freqs_in_hz else vf
+    return float(scale) * float(omega * omega)
+
+
+def _bounds_equal(a: float, b: float, *, atol: float = 1e-15, rtol: float = 1e-12) -> bool:
+    return abs(a - b) <= (atol + rtol * max(abs(a), abs(b), 1.0))
 
 
 def _monomial_eval(p: Sequence[int], r0: Sequence[float]) -> float:

@@ -2,7 +2,14 @@ import numpy as np
 import constants
 import pytest
 
-from control_constraints import build_L_b_for_point, rotation_from_axis_ref_alpha
+from control_constraints import (
+    build_L_b_for_point,
+    build_hessian_rows,
+    build_modal_constraints_for_point,
+    build_modal_hessian_functional_coeffs,
+    build_modal_hessian_functional_row,
+    rotation_from_axis_ref_alpha,
+)
 
 
 def test_quadratic_hessian_matches():
@@ -99,3 +106,124 @@ def test_rotation_axis_warning(capsys):
     rotation_from_axis_ref_alpha(axis, ref, 0.0)
     captured = capsys.readouterr()
     assert "Warning" in captured.out
+
+
+def test_modal_functional_row_matches_cartesian_combination():
+    powers = np.array(
+        [
+            [2, 0, 0],
+            [0, 2, 0],
+            [0, 0, 2],
+            [1, 1, 0],
+            [1, 0, 1],
+            [0, 1, 1],
+            [2, 1, 0],
+            [1, 1, 1],
+        ],
+        dtype=int,
+    )
+    r_eval = np.array([0.21, -0.35, 0.42], dtype=float)
+    dxx, dyy, dzz, dxy, dxz, dyz = build_hessian_rows(powers, r_eval)
+    vech_rows = [dxx, dyy, dzz, dxy, dxz, dyz]
+
+    p = np.array([0.3, -0.2, 0.7], dtype=float)
+    q = np.array([-0.4, 0.5, 0.1], dtype=float)
+    coeffs = build_modal_hessian_functional_coeffs(p, q)
+    row = build_modal_hessian_functional_row(vech_rows, p, q)
+    expected = (
+        coeffs[0] * dxx
+        + coeffs[1] * dyy
+        + coeffs[2] * dzz
+        + coeffs[3] * dxy
+        + coeffs[4] * dxz
+        + coeffs[5] * dyz
+    )
+    np.testing.assert_allclose(row, expected, rtol=0, atol=1e-14)
+
+
+def test_modal_offdiag_equalities_for_identity_basis():
+    powers = np.array(
+        [
+            [2, 0, 0],
+            [0, 2, 0],
+            [0, 0, 2],
+            [1, 1, 0],
+            [1, 0, 1],
+            [0, 1, 1],
+            [2, 1, 0],
+            [1, 2, 1],
+        ],
+        dtype=int,
+    )
+    r0 = np.array([0.4e-6, -0.2e-6, 0.1e-6], dtype=float)
+    L_eq, b_eq, G_ub, h_ub = build_modal_constraints_for_point(
+        powers,
+        r0,
+        principal_axis=np.array([1.0, 0.0, 0.0]),
+        ref_dir=np.array([0.0, 1.0, 0.0]),
+        alpha_deg=0.0,
+        freq_bounds_hz_or_rad=[(None, None), (None, None), (None, None)],
+        mass=1.0,
+        charge=1.0,
+        poly_is_potential_energy=False,
+        freqs_in_hz=False,
+        include_gradient=False,
+    )
+
+    r_eval = r0 / constants.ND_L0_M
+    _, _, _, dxy, dxz, dyz = build_hessian_rows(powers, r_eval)
+    np.testing.assert_allclose(L_eq[0], dxy, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(L_eq[1], dxz, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(L_eq[2], dyz, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(b_eq, np.zeros(3), rtol=0, atol=0)
+    assert G_ub.shape[0] == 0
+    assert h_ub.shape[0] == 0
+
+
+def test_modal_diagonal_bounds_exact_lower_upper():
+    powers = np.array(
+        [
+            [2, 0, 0],
+            [0, 2, 0],
+            [0, 0, 2],
+            [1, 1, 0],
+            [1, 0, 1],
+            [0, 1, 1],
+        ],
+        dtype=int,
+    )
+    r0 = np.array([0.0, 0.0, 0.0], dtype=float)
+    f1, f2, f3 = 0.8e6, 1.1e6, 1.7e6
+    mass = 2.0
+    charge = 0.5
+    scale = mass / charge
+    L0 = constants.ND_L0_M
+    lam1 = scale * (2.0 * np.pi * f1) ** 2 * (L0**2)
+    lam2 = scale * (2.0 * np.pi * f2) ** 2 * (L0**2)
+    lam3 = scale * (2.0 * np.pi * f3) ** 2 * (L0**2)
+
+    L_eq, b_eq, G_ub, h_ub = build_modal_constraints_for_point(
+        powers,
+        r0,
+        principal_axis=np.array([1.0, 0.0, 0.0]),
+        ref_dir=np.array([0.0, 1.0, 0.0]),
+        alpha_deg=0.0,
+        freq_bounds_hz_or_rad=[(f1, f1), (f2, None), (None, f3)],
+        mass=mass,
+        charge=charge,
+        poly_is_potential_energy=False,
+        freqs_in_hz=True,
+        include_gradient=False,
+    )
+
+    dxx, dyy, dzz, dxy, dxz, dyz = build_hessian_rows(powers, r0 / L0)
+    np.testing.assert_allclose(L_eq[0], dxy, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(L_eq[1], dxz, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(L_eq[2], dyz, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(L_eq[3], dxx, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(b_eq[3], lam1, rtol=0, atol=1e-9)
+
+    np.testing.assert_allclose(G_ub[0], -dyy, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(h_ub[0], -lam2, rtol=0, atol=1e-9)
+    np.testing.assert_allclose(G_ub[1], dzz, rtol=0, atol=1e-14)
+    np.testing.assert_allclose(h_ub[1], lam3, rtol=0, atol=1e-9)

@@ -89,7 +89,7 @@ RF_ELECTRODES = ("RF1", "RF2") + RF_SEGMENTS
 
 # ## 1 D ##
 center_region_x_um = 100  # microns
-center_region_y_um = 20  # microns
+center_region_y_um = 21  # microns
 center_region_z_um = center_region_y_um
 
 ## 2 D ##

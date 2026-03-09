@@ -79,3 +79,60 @@ def test_force_rebuild(tmp_path):
     with open(index_path, "r", encoding="utf-8") as f:
         idx = json.load(f)
     assert len(idx["entries"]) == 1
+
+
+def test_cache_identity_includes_ion_mass(tmp_path):
+    calls = {"n": 0}
+
+    def fake_builder(**kwargs):
+        calls["n"] += 1
+        return {"A": np.eye(2), "powers": np.array([[0, 0, 0], [1, 0, 0]], dtype=int)}
+
+    cfg = dict(
+        trap_name="T",
+        dc_electrodes=["DC1"],
+        rf_dc_electrodes=["RF1"],
+        polyfit_deg=4,
+        dc_bounds=[(-1.0, 1.0)],
+        rf_dc_bounds=[(-1.0, 1.0)],
+        s_bounds=(0.0, 1.0),
+        num_samples=2,
+        seed=0,
+    )
+
+    out_mass_40 = get_or_build_A(
+        cache_dir=str(tmp_path),
+        builder_fn=fake_builder,
+        force_rebuild=False,
+        ion_mass_kg=40.0,
+        **cfg,
+    )
+    out_mass_44 = get_or_build_A(
+        cache_dir=str(tmp_path),
+        builder_fn=fake_builder,
+        force_rebuild=False,
+        ion_mass_kg=44.0,
+        **cfg,
+    )
+    out_mass_40_again = get_or_build_A(
+        cache_dir=str(tmp_path),
+        builder_fn=fake_builder,
+        force_rebuild=False,
+        ion_mass_kg=40.0,
+        **cfg,
+    )
+
+    assert calls["n"] == 2
+    assert out_mass_40["cache_hit"] is False
+    assert out_mass_44["cache_hit"] is False
+    assert out_mass_40_again["cache_hit"] is True
+    assert out_mass_40["cache_path"] != out_mass_44["cache_path"]
+
+    index_path = os.path.join(str(tmp_path), "index.json")
+    import json
+
+    with open(index_path, "r", encoding="utf-8") as f:
+        idx = json.load(f)
+    assert len(idx["entries"]) == 2
+    assert len({entry["key"] for entry in idx["entries"]}) == 2
+    assert sorted(entry["cfg_key"]["ion_mass_kg"] for entry in idx["entries"]) == [40.0, 44.0]
