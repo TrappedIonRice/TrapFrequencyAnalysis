@@ -86,6 +86,9 @@ def test_reachability_model_construction_matches_modal_diagonal_pushforward(monk
     np.testing.assert_allclose(model.T, model.L_diag_c @ model.A, rtol=0, atol=1e-12)
     np.testing.assert_allclose(model.lower_u, np.array([-2.0, -1.0, -0.5, 0.0]), rtol=0, atol=0)
     np.testing.assert_allclose(model.upper_u, np.array([2.0, 1.0, 0.5, 3.0]), rtol=0, atol=0)
+    assert model.basis == "nondim"
+    np.testing.assert_allclose(model.nd_L0_m, constants.ND_L0_M, rtol=0, atol=0)
+    np.testing.assert_allclose(model.ion_mass_kg, constants.ion_mass, rtol=0, atol=0)
 
     r_eval = r0 / constants.ND_L0_M
     dxx, dyy, dzz, _, _, _ = build_hessian_rows(powers, r_eval)
@@ -256,6 +259,8 @@ def test_reserved_reachability_builder_args_are_noop(monkeypatch):
     np.testing.assert_allclose(model_default.E, model_reserved.E, rtol=0, atol=1e-12)
     np.testing.assert_allclose(model_default.T, model_reserved.T, rtol=0, atol=1e-12)
     assert "api_scope_note" in model_reserved.metadata
-    assert model_reserved.metadata["ion_charge_c_reserved"] == 7.5
-    assert model_reserved.metadata["poly_is_potential_energy_reserved"] is False
+    assert model_reserved.ion_charge_c == 7.5
+    assert model_reserved.poly_is_potential_energy is False
+    assert model_reserved.metadata["ion_charge_c_used_for_conversion"] == 7.5
+    assert model_reserved.metadata["poly_is_potential_energy_for_conversion"] is False
     assert model_reserved.metadata["freqs_in_hz_reserved"] is True

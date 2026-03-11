@@ -222,6 +222,14 @@ def build_voltage_to_c_matrix(
             )
     if nonlin_flags:
         print("[warn] Nonlinearity indicators: " + "; ".join(nonlin_flags))
+        if r2_min is not None and bad_r2.size > 0 and powers_ref is not None:
+            for idx in bad_r2:
+                px, py, pz = powers_ref[idx]
+                r2_val = float(r2_per_c[idx])
+                print(
+                    f"[warn]   c[{idx}] (x^{int(px)} y^{int(py)} z^{int(pz)}): "
+                    f"R^2={r2_val:.6f}"
+                )
 
     return {
         "A": A,
@@ -282,7 +290,7 @@ if __name__ == "__main__":
     out = build_voltage_to_c_matrix(
         trap_name="1252dTrapRice",
         dc_electrodes=[f"DC{i}" for i in range(1, 21)],
-        num_samples=50,
+        num_samples=80,
     )
     print("A shape:", out["A"].shape)
     print("A:", out["A"])
@@ -291,7 +299,7 @@ if __name__ == "__main__":
     out2 = build_voltage_to_c_matrix(
         trap_name="InnTrapFine",
         dc_electrodes=[f"DC{i}" for i in range(1, 13)],
-        num_samples=50,
+        num_samples=80,
     )
     print("A shape:", out2["A"].shape)
     print("A:", out2["A"])
@@ -300,7 +308,7 @@ if __name__ == "__main__":
     out3 = build_voltage_to_c_matrix(
         trap_name="Simp58_101",
         dc_electrodes=[f"DC{i}" for i in range(1, 11)],
-        num_samples=50,
+        num_samples=80,
     )
     print("A shape:", out3["A"].shape)
     print("A:", out3["A"])

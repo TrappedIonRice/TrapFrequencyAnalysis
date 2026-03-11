@@ -125,7 +125,7 @@ def run_demo() -> None:
         freqs_in_hz=True,
         trap_name=trap_name,
         dc_electrodes=dc_electrodes,
-        num_samples=30,  # just how many sample to sample when defining A
+        num_samples=80,  # just how many sample to sample when defining A
         s_bounds=(0.0, constants.RF_S_MAX_DEFAULT),
         polyfit_deg=6,
         objective=min_objective,
@@ -250,7 +250,7 @@ def run_demo_box() -> None:
         freqs_in_hz=True,
         trap_name=trap_name,
         dc_electrodes=dc_electrodes,
-        num_samples=30,
+        num_samples=80,
         s_bounds=(0.0, constants.RF_S_MAX_DEFAULT),
         polyfit_deg=4,
         objective="l2_dc",
@@ -382,7 +382,7 @@ def demo_1():
             freqs_in_hz=True,
             trap_name=trap_name,
             dc_electrodes=dc_electrodes,
-            num_samples=30,  # just how many sample to sample when defining A
+            num_samples=80,  # just how many sample to sample when defining A
             s_bounds=(0.0, constants.RF_S_MAX_DEFAULT),
             polyfit_deg=4,
             objective=min_objective,

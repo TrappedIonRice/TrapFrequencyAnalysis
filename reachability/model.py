@@ -65,6 +65,11 @@ class ReachabilityModel:
     u_bounds: List[Tuple[float | None, float | None]]
     r0: np.ndarray
     rotation: np.ndarray
+    basis: str = "nondim"
+    nd_L0_m: float = constants.ND_L0_M
+    ion_mass_kg: float = constants.ion_mass
+    ion_charge_c: float | None = constants.ion_charge
+    poly_is_potential_energy: bool = False
     metadata: Dict[str, object] = field(default_factory=dict)
 
     @property
@@ -157,7 +162,7 @@ def build_reachability_model(
     trap_name: str,
     dc_electrodes: Sequence[str],
     rf_dc_electrodes: Sequence[str] = ("RF1", "RF2"),
-    num_samples: int = 30,
+    num_samples: int = 80,
     dc_bounds: Tuple[float, float] | Sequence[Tuple[float, float]] = (-500.0, 500.0),
     rf_dc_bounds: Tuple[float, float] | Sequence[Tuple[float, float]] = (-50.0, 50.0),
     s_bounds: Tuple[float, float] = (0.0, constants.RF_S_MAX_DEFAULT),
@@ -168,8 +173,8 @@ def build_reachability_model(
     cache_dir: str = DEFAULT_CACHE_DIR,
     force_rebuild_A: bool = False,
     ion_mass_kg: float | None = None,
-    ion_charge_c: float | None = None,
-    poly_is_potential_energy: bool | None = None,
+    ion_charge_c: float | None = constants.ion_charge,
+    poly_is_potential_energy: bool | None = False,
     freqs_in_hz: bool | None = None,
 ) -> ReachabilityModel:
     """
@@ -190,13 +195,20 @@ def build_reachability_model(
     Notes on parameter scope:
       - `ion_mass_kg` is validated against `constants.ion_mass` because A-building
         currently depends on simulation-side global mass handling.
-      - `ion_charge_c`, `poly_is_potential_energy`, and `freqs_in_hz` are accepted
-        for backward compatibility but are not used by this fixed-curvature builder.
+      - `ion_charge_c` and `poly_is_potential_energy` do not change E/e/T
+        construction, but are stored on the model for explicit lambda->frequency
+        conversion utilities.
+      - `freqs_in_hz` is accepted for backward compatibility and unused here.
     """
     r0v = _as_vec3(r0, "r0")
     dc_list = [str(x) for x in dc_electrodes]
     rf_list = [str(x) for x in rf_dc_electrodes]
     mass_for_A = _validated_builder_mass(ion_mass_kg)
+    poly_is_energy = bool(poly_is_potential_energy)
+    charge_for_conversion = _resolve_conversion_charge(
+        ion_charge_c=ion_charge_c,
+        poly_is_potential_energy=poly_is_energy,
+    )
 
     if use_cache:
         out = build_voltage_to_c_matrix_cached(
@@ -287,12 +299,13 @@ def build_reachability_model(
         "force_rebuild_A": bool(force_rebuild_A),
         "ion_mass_kg_requested": None if ion_mass_kg is None else float(ion_mass_kg),
         "ion_mass_kg_used": mass_for_A,
-        "ion_charge_c_reserved": ion_charge_c,
-        "poly_is_potential_energy_reserved": poly_is_potential_energy,
+        "ion_charge_c_used_for_conversion": charge_for_conversion,
+        "poly_is_potential_energy_for_conversion": poly_is_energy,
         "freqs_in_hz_reserved": freqs_in_hz,
         "api_scope_note": (
             "Model is built in modal-curvature space using fixed equalities and "
-            "modal diagonal map only; frequency-conversion parameters are reserved."
+            "modal diagonal map only; frequency-conversion fields are stored for "
+            "downstream conversion utilities."
         ),
         "basis": "nondim",
         "nd_L0_m": float(constants.ND_L0_M),
@@ -320,6 +333,11 @@ def build_reachability_model(
         u_bounds=bounds,
         r0=r0v,
         rotation=R,
+        basis="nondim",
+        nd_L0_m=float(constants.ND_L0_M),
+        ion_mass_kg=mass_for_A,
+        ion_charge_c=charge_for_conversion,
+        poly_is_potential_energy=poly_is_energy,
         metadata=metadata,
     )
 
@@ -351,6 +369,21 @@ def _validated_builder_mass(ion_mass_kg: float | None) -> float:
             "active constants.ion_mass value for honest behavior."
         )
     return requested
+
+
+def _resolve_conversion_charge(
+    *,
+    ion_charge_c: float | None,
+    poly_is_potential_energy: bool,
+) -> float | None:
+    if poly_is_potential_energy:
+        return None
+    if ion_charge_c is None:
+        raise ValueError(
+            "ion_charge_c is required for frequency conversion when "
+            "poly_is_potential_energy is False."
+        )
+    return float(ion_charge_c)
 
 
 def _normalize_u_bounds(

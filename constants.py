@@ -102,7 +102,7 @@ RF_FREQ_REF_HZ = 36e6
 # Use omega in MHz units for s: omega_MHz = 2*pi*(f_Hz/1e6)
 # This is omega/1e6 (rad/s scaled to MHz units), used in s definition.
 RF_OMEGA_REF_MHZ = 2.0 * np.pi * (RF_FREQ_REF_HZ / 1e6)
-RF_S_MAX_DEFAULT = (4000.0**2) / (RF_OMEGA_REF_MHZ**2)
+RF_S_MAX_DEFAULT = (600.0**2) / (RF_OMEGA_REF_MHZ**2)
 
 # Nondimensionalization length scale for inverse pipeline
 ND_L0_M = 10e-6

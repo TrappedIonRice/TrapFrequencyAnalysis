@@ -11,7 +11,9 @@ import constants
 from reachability import (
     DEFAULT_DEDUPLICATE_TOL,
     build_reachability_model,
+    plot_multi_trap_frequency_space,
     plot_reachable_boundary_hull_3d,
+    plot_trap_frequency_space,
     sample_reachable_boundary,
 )
 
@@ -20,7 +22,7 @@ def run_reachability_demo(
     *,
     n_samples: int = 2000,
     trap_name: str = "Simp58_101",
-    num_model_samples: int = 30,
+    num_model_samples: int = 80,
     seed: int = 0,
     random_seed: int = 1,
     deduplicate_tol: float = DEFAULT_DEDUPLICATE_TOL,
@@ -88,5 +90,259 @@ def run_reachability_demo(
     )
 
 
+def run_frequency_demo_single(
+    *,
+    n_samples: int = 1500,
+    trap_name: str = "1252dTrapRice",
+    random_seed: int = 1,
+) -> None:
+    """
+    Build and plot one trap directly in frequency space (Hz).
+    """
+    dc_count = {
+        "Simp58_101": 10,
+        "InnTrapFine": 12,
+        "1252dTrapRice": 20,
+    }.get(trap_name, 10)
+    dc_electrodes = [f"DC{i}" for i in range(1, dc_count + 1)]
+    rf_dc_electrodes = ["RF1", "RF2"]
+    spec = {
+        "trap_name": trap_name,
+        "dc_electrodes": dc_electrodes,
+        "rf_dc_electrodes": rf_dc_electrodes,
+        "r0": np.array([0.0, 0.0, 0.0], dtype=float),
+        "principal_axis": np.array([1.0, 0.0, 0.0], dtype=float),
+        "ref_dir": np.array([0.0, 0.0, 1.0], dtype=float),
+        "alpha_deg": 0.0,
+        "u_bounds": [(-100.0, 100.0)] * (len(dc_electrodes) + len(rf_dc_electrodes))
+        + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        "ion_mass_kg": constants.ion_mass,
+        "ion_charge_c": constants.ion_charge,
+        "poly_is_potential_energy": False,
+    }
+    plot_trap_frequency_space(
+        spec,
+        n_samples=n_samples,
+        random_seed=random_seed,
+        output="hz",
+        backend="plotly",
+        density_scale=1.6,
+        show_surface=True,
+        show=True,
+    )
+
+
+def run_frequency_demo_multi(
+    *,
+    n_samples: int = 10000,
+    random_seed: int = 2,
+) -> None:
+    """
+    Overlay multiple trap frequency-space reachability clouds on one plot.
+    """
+    specs = [
+        {
+            "trap_name": "2Dtrap_125_45deg_200exp",
+            "name": "2Dtrap_125_45deg_200exp___pm100bounds",
+            "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+            "rf_dc_electrodes": ["RF1", "RF2"],
+            "alpha_deg": 0.0,
+            "u_bounds": [(-100.0, 100.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+            "ion_mass_kg": constants.ion_mass,
+            "ion_charge_c": constants.ion_charge,
+            "poly_is_potential_energy": False,
+        },
+        # {
+        #     "trap_name": "2Dtrap_125_45deg_200exp",
+        #     "name": "2Dtrap_125_45deg_200exp___pm90bounds",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-90.0, 90.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "2Dtrap_125_45deg_200exp",
+        #     "name": "2Dtrap_125_45deg_200exp___pm75bounds",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-75.0, 75.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "2Dtrap_125_45deg_200exp",
+        #     "name": "2Dtrap_125_45deg_200exp___pm50bounds",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-50.0, 50.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "2Dtrap_125_45deg_200exp",
+        #     "name": "2Dtrap_125_45deg_200exp___pm25bounds",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-25.0, 25.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "2Dtrap_125_45deg_200exp",
+        #     "name": "2Dtrap_125_45deg_200exp___pm15bounds",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-15.0, 15.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "2Dtrap_125_45deg_200exp",
+        #     "name": "2Dtrap_125_45deg_200exp___pm10bounds",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-10.0, 10.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        {
+            "trap_name": "InnTrapFine",
+            "name": "InnTrapFine",
+            "dc_electrodes": [f"DC{i}" for i in range(1, 13)],
+            "rf_dc_electrodes": ["RF1", "RF2"],
+            "alpha_deg": 0.0,
+            "u_bounds": [(-100.0, 100.0)] * 14 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+            "ion_mass_kg": constants.ion_mass,
+            "ion_charge_c": constants.ion_charge,
+            "poly_is_potential_energy": False,
+        },
+        {
+            "trap_name": "1252dTrapRice",
+            "name": "1252dTrapRice",
+            "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+            "rf_dc_electrodes": ["RF1", "RF2"],
+            "alpha_deg": 0.0,
+            "u_bounds": [(-100.0, 100.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+            "ion_mass_kg": constants.ion_mass,
+            "ion_charge_c": constants.ion_charge,
+            "poly_is_potential_energy": False,
+        },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_42deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 42,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_43deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 43,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_44deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 44,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        {
+            "trap_name": "simp58_101",
+            "name": "simp58_101_45deg",
+            "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+            "rf_dc_electrodes": ["RF1", "RF2"],
+            "alpha_deg": 45,
+            "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+            "ion_mass_kg": constants.ion_mass,
+            "ion_charge_c": constants.ion_charge,
+            "poly_is_potential_energy": False,
+        },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_46deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 46,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_48deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 48,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_49deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 49,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_41deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 41,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+    ]
+    plot_multi_trap_frequency_space(
+        specs,
+        n_samples=n_samples,
+        random_seed=random_seed,
+        output="hz",
+        backend="plotly",
+        density_scale=1.4,
+        show_surface=True,
+        max_surface_triangles=4000,
+        max_scatter_points=10000,
+        show=True,
+        save_plotly_html= True,
+    )
+
 if __name__ == "__main__":
-    run_reachability_demo()
+    # run_frequency_demo_single()
+    run_frequency_demo_multi()
