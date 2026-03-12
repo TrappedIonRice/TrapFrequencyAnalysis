@@ -98,6 +98,16 @@ center_region_x_um = 100  # microns
 center_region_y_um = 20  # microns
 center_region_z_um = 20
 
+# Reference RF frequency used for A-matrix construction (Hz)
+RF_FREQ_REF_HZ = 36e6
+# Use omega in MHz units for s: omega_MHz = 2*pi*(f_Hz/1e6)
+# This is omega/1e6 (rad/s scaled to MHz units), used in s definition.
+RF_OMEGA_REF_MHZ = 2.0 * np.pi * (RF_FREQ_REF_HZ / 1e6)
+RF_S_MAX_DEFAULT = (600.0**2) / (RF_OMEGA_REF_MHZ**2)
+
+# Nondimensionalization length scale for inverse pipeline
+ND_L0_M = 10e-6
+ND_L0_UM = 10.0
 
 # TODO: The values should be applied differently, the current implemetation is flawed
 # What should happen is that each pairwise combination of electodes has a capacitance and then

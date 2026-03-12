@@ -1300,7 +1300,7 @@ def main_2():
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("2D trap V4.4.125 - c - 45deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1", tv)
+    sim = Simulation("2D trap V4.4.125 - c - 90deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv", tv)
 
 # 2D trap V4.4.125 - a - 45deg 150um ground
 # 2D_V4_3_125_blades_only_Original_trap
@@ -1312,6 +1312,14 @@ def main_2():
 # 2D trap V4.4.125 - c - 65deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1
 # 2D trap V4.4.125 - c - 90deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1
 # 2D trap V4.4.125 - c - 45deg 150um ground__MORE_exposed_DC_Cen_to_RF_0.1
+# 2D trap V4.4.125 - c - 45deg 200um ground_exposed_DC_With_RF_450_+_curv
+# 2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv
+# 2D trap V4.4.125 - c - 90deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv
+# 2D trap V4.4.125 - c - 65deg 200um ground_MORE_exposed_0.1_DC_With_RF_400_+_curv
+# 2D trap V4.4.125 - c - 75deg 150um ground_MORE_exposed_0.1_DC_With_RF_308_+_curv
+# 2D trap V4.4.125 - c - 80deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv
+# 2D trap V4.4.125 - c - 90deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv
+# 2D trap V4.4.125 - c - 75deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv
 # 2D_Innsbruck_Charles
 # 2D_Innsbruck_Evan
 
