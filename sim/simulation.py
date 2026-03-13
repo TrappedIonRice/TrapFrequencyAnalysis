@@ -1177,9 +1177,9 @@ def main_2():
     of_DC_center = 0
     offset_RF = 0
 
-    rf_freq_hz = (36) * 10**6
-    rf_amp_rf1 = 330 #120
-    rf_amp_rf2 = 330 #120
+    rf_freq_hz = (43) * 10**6
+    rf_amp_rf1 = 510 #120
+    rf_amp_rf2 = 510 #120
     tv.add_driving("RF", rf_freq_hz, 0.0, {"RF1": rf_amp_rf1, "RF2": rf_amp_rf2})
 
     outer = 100 - of_DC_end #Endcaps
@@ -1267,9 +1267,9 @@ def main_2():
 
    #For Charles config. in Roman`s traps`:
 
-    nc = 67 #2
-    c = -30 #0.1
-    end = 35 #0
+    nc = 33 #2
+    c = -95 #0.1
+    end = 17 #0
 
     dc_offsets = {
         "DC1": end,
@@ -1292,8 +1292,8 @@ def main_2():
         "DC18": c,
         "DC19": nc,
         "DC20": end,
-        "RF1": 2 - offset_RF,
-        "RF2": 2 - offset_RF,
+        "RF1": -20 - offset_RF,
+        "RF2": -20 - offset_RF,
     }
 
 # For Evan`s voltage predictor code in Roman`s trap:
@@ -1326,7 +1326,7 @@ def main_2():
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("2D trap V4.4.125 - c - 75deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv", tv)
+    sim = Simulation("2D trap V4.4.125 - c - 90deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv", tv)
 
 # 2D trap V4.4.125 - a - 45deg 150um ground
 # 2D_V4_3_125_blades_only_Original_trap

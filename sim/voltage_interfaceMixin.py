@@ -425,7 +425,7 @@ class VoltageInterfaceMixin:
 
                 # add q_vert for RF-only row
                 if row == 1 and axis == "z":
-                    q_vert = (2 * np.sqrt(2) * freq_hz) / ((36) * 10**6) # Change here the RF_Drive_Frequency
+                    q_vert = (2 * np.sqrt(2) * freq_hz) / ((43) * 10**6) # Change here the RF_Drive_Frequency
                     label_lines.append(f"q_vert = {q_vert:.5f}")
 
                 ax_plot.text(
