@@ -1267,9 +1267,9 @@ def main_2():
 
    #For Charles config. in Roman`s traps`:
 
-    nc = 100 #2
-    c = -50 #0.1
-    end = 100 #0
+    nc = 67 #2
+    c = -30 #0.1
+    end = 35 #0
 
     dc_offsets = {
         "DC1": end,
@@ -1292,8 +1292,8 @@ def main_2():
         "DC18": c,
         "DC19": nc,
         "DC20": end,
-        "RF1": 20 - offset_RF,
-        "RF2": 20 - offset_RF,
+        "RF1": 2 - offset_RF,
+        "RF2": 2 - offset_RF,
     }
 
 # For Evan`s voltage predictor code in Roman`s trap:
