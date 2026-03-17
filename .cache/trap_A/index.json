@@ -4200,6 +4200,187 @@
       "path": "2D trap V4.4.125 - c - 45deg 200um ground_exposed_DC_With_RF_450_+_curv\\deg6\\077d339e72e4.npz",
       "polyfit_deg": 6,
       "trap_name": "2D trap V4.4.125 - c - 45deg 200um ground_exposed_DC_With_RF_450_+_curv"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "num_samples": 80,
+        "polyfit_deg": 6,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          4.931804503953705
+        ],
+        "seed": 0,
+        "trap_name": "2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10",
+          "DC11",
+          "DC12",
+          "DC13",
+          "DC14",
+          "DC15",
+          "DC16",
+          "DC17",
+          "DC18",
+          "DC19",
+          "DC20"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 6,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-17T15:52:22.456594+00:00",
+      "fit_rel_rmse": 6.190870303813743e-09,
+      "key": "0406c9d308797d574a502f9397cf6fb430eb52df953f65098dcdebaabd83545e",
+      "key12": "0406c9d30879",
+      "path": "2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv\\deg6\\0406c9d30879.npz",
+      "polyfit_deg": 6,
+      "trap_name": "2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv"
     }
   ],
   "schema_version": "1"
