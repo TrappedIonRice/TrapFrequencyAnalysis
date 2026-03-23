@@ -34,8 +34,11 @@ def run_demo() -> None:
     # Eq position you want
     r0 = np.array([0.0, 0.0, 0.0], dtype=float)
 
+    freq_x = 450 #kHz
+    freq_y = 2000 #kHz
+    freq_z = 900 #kHz
     # Mode freq you want in Hz
-    freqs = np.array([0.2e6, 0.4e6, 3.00e6], dtype=float)  # Hz
+    freqs = np.array([freq_x*1e3, freq_z*1e3, freq_y*1e3], dtype=float)  # Hz
 
     # Principle directions. "Princ_axis" defines the first principal direction,
     # and "ref_dir" "alpha_deg" are used to define the other two by:
@@ -83,12 +86,12 @@ def run_demo() -> None:
     # )
 
     # # Trap/fit configuration for 2Dtrap_125_45deg_200exp
-    trap_name = "2Dtrap_125_45deg_200exp"
+    trap_name = "2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv"
     dc_electrodes = [f"DC{i}" for i in range(1, 21)]
 
     u_bounds = (
-        [(-1000, 1000)] * 20  # DC1..DC10
-        + [(-1000.00000, 1000.00000)] * 2  # RF1_DC, RF2_DC
+        [(-45, 90)] * 20  # DC1..DC10
+        + [(-45.00000, 45.00000)] * 2  # RF1_DC, RF2_DC
         + [(0.0, constants.RF_S_MAX_DEFAULT*100)]  # s = V^2 / omega^2
     )
 
@@ -110,7 +113,7 @@ def run_demo() -> None:
     # IMPORTANT: Just use l2_dc and allow bounds to check s
 
     # wheather to take into acount the given bounds or not
-    enforce_bounds_on_u = False
+    enforce_bounds_on_u = True
 
     # the call of the inverse pipeline
     out = solve_u_for_exact_targets(
