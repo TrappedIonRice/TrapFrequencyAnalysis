@@ -611,6 +611,93 @@ def plot_frequency_boundary_points_3d_plotly(
     return fig
 
 
+def plot_lambda_boundary_points_3d_plotly(
+    lambda_points: np.ndarray,
+    *,
+    surface_points: np.ndarray | None = None,
+    surface_triangles: np.ndarray | None = None,
+    show_surface: bool = True,
+    surface_alpha: float = 0.18,
+    marker_size: float = 3.5,
+    marker_opacity: float = 0.86,
+    max_surface_triangles: int | None = 12000,
+    max_scatter_points: int | None = 40000,
+    fig=None,
+    show: bool = True,
+    label: str | None = None,
+    title: str | None = None,
+    color: str | None = None,
+):
+    """
+    Plot lambda-space boundary points with Plotly 3D interactivity.
+
+    The lambda-space shell uses the already-clipped positive-octant boundary
+    triangles in nondimensional lambda coordinates.
+    """
+    if go is None:
+        raise RuntimeError("Plotly is unavailable; install plotly or use matplotlib backend.")
+
+    pts = _as_points(lambda_points)
+    if fig is None:
+        fig = go.Figure()
+
+    surf_pts = np.zeros((0, 3), dtype=float) if surface_points is None else _as_points(surface_points)
+    surf_tri = np.zeros((0, 3), dtype=int) if surface_triangles is None else _as_triangles(surface_triangles)
+    if show_surface and surf_pts.shape[0] > 0 and surf_tri.shape[0] > 0:
+        valid_tri = np.all((surf_tri >= 0) & (surf_tri < surf_pts.shape[0]), axis=1)
+        surf_tri_valid = surf_tri[valid_tri]
+        surf_pts_plot, surf_tri_valid = _decimate_surface_mesh(
+            surf_pts,
+            surf_tri_valid,
+            max_triangles=max_surface_triangles,
+        )
+        if surf_tri_valid.shape[0] > 0:
+            fig.add_trace(
+                go.Mesh3d(
+                    x=surf_pts_plot[:, 0],
+                    y=surf_pts_plot[:, 1],
+                    z=surf_pts_plot[:, 2],
+                    i=surf_tri_valid[:, 0],
+                    j=surf_tri_valid[:, 1],
+                    k=surf_tri_valid[:, 2],
+                    opacity=float(surface_alpha),
+                    color=color or "#888888",
+                    hoverinfo="skip",
+                    showlegend=False,
+                    name=None if label is None else f"{label} shell",
+                )
+            )
+
+    scatter_pts = _decimate_scatter_points(pts, max_points=max_scatter_points)
+    if scatter_pts.shape[0] > 0:
+        marker = {
+            "size": float(marker_size),
+            "opacity": float(marker_opacity),
+        }
+        if color is not None:
+            marker["color"] = color
+        fig.add_trace(
+            go.Scatter3d(
+                x=scatter_pts[:, 0],
+                y=scatter_pts[:, 1],
+                z=scatter_pts[:, 2],
+                mode="markers",
+                name=label,
+                legendgroup=label,
+                showlegend=label is not None,
+                marker=marker,
+            )
+        )
+
+    _update_plotly_lambda_layout(
+        fig,
+        title="Reachable Boundary in Lambda Space" if title is None else title,
+    )
+    if show:
+        fig.show()
+    return fig
+
+
 def plot_single_trap_frequency_space(
     model: ReachabilityModel,
     boundary_sampling: BoundarySamplingResult,
@@ -688,6 +775,7 @@ def plot_multi_trap_frequency_space(
     show_surface: bool = True,
     max_surface_triangles: int | None = 9000,
     max_scatter_points: int | None = 25000,
+    plot_lambda_space: bool = False,
     save_plotly_html: bool = False,
     backend: str = "plotly",
     output: str = "hz",
@@ -704,6 +792,8 @@ def plot_multi_trap_frequency_space(
     save_plotly_html:
       - if True and backend is Plotly, save an HTML view under
         `plot_multi_trap_frequency_space_htmlViews/` in the repo root.
+        If `plot_lambda_space=True`, save a second lambda-space HTML under
+        `plot_multi_trap_lambda_space_htmlViews/`.
     """
     backend_mode = _resolve_plot_backend(backend)
     mode = _validate_output_mode(output)
@@ -715,6 +805,7 @@ def plot_multi_trap_frequency_space(
 
     if backend_mode == "plotly":
         fig = go.Figure()
+        lambda_fig = go.Figure() if plot_lambda_space else None
         results: list[FrequencyBoundarySample] = []
         labels_for_name: list[str] = []
         for idx, spec in enumerate(trap_specs):
@@ -742,6 +833,7 @@ def plot_multi_trap_frequency_space(
                 random_seed=random_seed + idx,
             )
             results.append(freq_sample)
+            color = PLOTLY_DEFAULT_COLORS[idx % len(PLOTLY_DEFAULT_COLORS)]
             fig = plot_frequency_boundary_points_3d_plotly(
                 freq_sample.frequency_points,
                 surface_points=freq_sample.frequency_surface_points,
@@ -752,10 +844,23 @@ def plot_multi_trap_frequency_space(
                 max_scatter_points=max_scatter_points,
                 show=False,
                 label=str(trap_label),
-                color=PLOTLY_DEFAULT_COLORS[idx % len(PLOTLY_DEFAULT_COLORS)],
+                color=color,
                 fig=fig,
                 title=default_title,
             )
+            if lambda_fig is not None:
+                lambda_fig = plot_lambda_boundary_points_3d_plotly(
+                    freq_sample.lambda_boundary.lambda_points,
+                    surface_points=freq_sample.lambda_boundary.surface_lambda_points,
+                    surface_triangles=freq_sample.lambda_boundary.surface_triangles,
+                    show_surface=show_surface,
+                    max_surface_triangles=max_surface_triangles,
+                    max_scatter_points=max_scatter_points,
+                    show=False,
+                    label=str(trap_label),
+                    color=color,
+                    fig=lambda_fig,
+                )
         if save_plotly_html:
             out_dir = _default_multi_trap_html_output_dir()
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -777,8 +882,32 @@ def plot_multi_trap_frequency_space(
                     "[warn] Primary multi-trap HTML filename was too long for this system; "
                     f"saved using compact fallback: {fallback_path}"
                 )
+            if lambda_fig is not None:
+                lambda_out_dir = _default_multi_trap_lambda_html_output_dir()
+                lambda_out_dir.mkdir(parents=True, exist_ok=True)
+                lambda_out_path = lambda_out_dir / _build_multi_trap_lambda_html_filename(
+                    labels=labels_for_name,
+                    n_samples=n_samples,
+                    density_scale=density_scale,
+                    show_surface=show_surface,
+                )
+                try:
+                    lambda_fig.write_html(str(lambda_out_path))
+                    print(f"[info] Saved multi-trap lambda Plotly HTML: {lambda_out_path}")
+                except (FileNotFoundError, OSError):
+                    lambda_fallback_name = _build_multi_trap_lambda_html_fallback_filename(
+                        labels=labels_for_name,
+                    )
+                    lambda_fallback_path = lambda_out_dir / lambda_fallback_name
+                    lambda_fig.write_html(str(lambda_fallback_path))
+                    print(
+                        "[warn] Primary multi-trap lambda HTML filename was too long for this system; "
+                        f"saved using compact fallback: {lambda_fallback_path}"
+                    )
         if show:
             fig.show()
+            if lambda_fig is not None:
+                lambda_fig.show()
         return fig, None, results
 
     fig = plt.figure(figsize=(8.0, 6.0))
@@ -835,6 +964,7 @@ def plot_trap_frequency_space(
     show_surface: bool = True,
     max_surface_triangles: int | None = 12000,
     max_scatter_points: int | None = 40000,
+    plot_lambda_space: bool = False,
     backend: str = "plotly",
     output: str = "hz",
     show: bool = True,
@@ -843,8 +973,11 @@ def plot_trap_frequency_space(
     Dispatch frequency-space plotting for one trap or multiple traps.
 
     backend defaults to "plotly" and falls back to "matplotlib" if Plotly is not
-    installed in the current environment.
+    installed in the current environment. If `plot_lambda_space=True` and Plotly
+    is active, a separate lambda-space figure is also produced from the already
+    clipped positive-octant lambda boundary.
     """
+    backend_mode = _resolve_plot_backend(backend)
     if isinstance(traps, (str, Mapping)):
         cfg = _normalize_trap_spec(traps)
         model = _build_model_from_spec(cfg, num_model_samples=num_model_samples)
@@ -855,7 +988,7 @@ def plot_trap_frequency_space(
             deduplicate_tol=deduplicate_tol,
             build_hull=True,
         )
-        return plot_single_trap_frequency_space(
+        out = plot_single_trap_frequency_space(
             model,
             boundary,
             output=output,
@@ -867,11 +1000,24 @@ def plot_trap_frequency_space(
             show_surface=show_surface,
             max_surface_triangles=max_surface_triangles,
             max_scatter_points=max_scatter_points,
-            backend=backend,
+            backend=backend_mode,
             random_seed=random_seed,
             show=show,
             label=cfg["trap_name"],
         )
+        if plot_lambda_space and backend_mode == "plotly":
+            _, _, freq_sample = out
+            plot_lambda_boundary_points_3d_plotly(
+                freq_sample.lambda_boundary.lambda_points,
+                surface_points=freq_sample.lambda_boundary.surface_lambda_points,
+                surface_triangles=freq_sample.lambda_boundary.surface_triangles,
+                show_surface=show_surface,
+                max_surface_triangles=max_surface_triangles,
+                max_scatter_points=max_scatter_points,
+                show=show,
+                label=cfg["trap_name"],
+            )
+        return out
     return plot_multi_trap_frequency_space(
         list(traps),
         n_samples=n_samples,
@@ -885,7 +1031,8 @@ def plot_trap_frequency_space(
         show_surface=show_surface,
         max_surface_triangles=max_surface_triangles,
         max_scatter_points=max_scatter_points,
-        backend=backend,
+        plot_lambda_space=plot_lambda_space,
+        backend=backend_mode,
         output=output,
         show=show,
     )
@@ -949,6 +1096,23 @@ def _update_plotly_frequency_layout(
             "xaxis": {"title": {"text": x_label}},
             "yaxis": {"title": {"text": y_label}},
             "zaxis": {"title": {"text": z_label}},
+            "aspectmode": "cube",
+        },
+        margin={"l": 0, "r": 0, "b": 0, "t": 40},
+    )
+
+
+def _update_plotly_lambda_layout(
+    fig,
+    *,
+    title: str,
+) -> None:
+    fig.update_layout(
+        title=title,
+        scene={
+            "xaxis": {"title": {"text": "lambda_1"}},
+            "yaxis": {"title": {"text": "lambda_2"}},
+            "zaxis": {"title": {"text": "lambda_3"}},
             "aspectmode": "cube",
         },
         margin={"l": 0, "r": 0, "b": 0, "t": 40},
@@ -1204,6 +1368,11 @@ def _default_multi_trap_html_output_dir() -> Path:
     return repo_root / "plot_multi_trap_frequency_space_htmlViews"
 
 
+def _default_multi_trap_lambda_html_output_dir() -> Path:
+    repo_root = Path(__file__).resolve().parents[1]
+    return repo_root / "plot_multi_trap_lambda_space_htmlViews"
+
+
 def _build_multi_trap_html_filename(
     *,
     labels: Sequence[str],
@@ -1248,6 +1417,43 @@ def _build_multi_trap_html_fallback_filename(*, labels: Sequence[str]) -> str:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     digest = hashlib.sha1("||".join(str(x) for x in labels).encode("utf-8")).hexdigest()[:12]
     return f"plot_multi_trap_frequency_space__{ts}__{digest}.html"
+
+
+def _build_multi_trap_lambda_html_filename(
+    *,
+    labels: Sequence[str],
+    n_samples: int,
+    density_scale: float,
+    show_surface: bool,
+) -> str:
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    label_items = [_slugify_for_filename(x) for x in labels if str(x).strip()]
+    full_label_slug = "__".join(label_items) if label_items else "unnamed"
+    preview_items = label_items[:3]
+    preview_slug = "__".join(preview_items) if preview_items else "unnamed"
+    if len(label_items) > 3:
+        preview_slug = f"{preview_slug}__plus-{len(label_items) - 3}"
+    preview_slug_short = preview_slug[:40].strip("-_")
+    if not preview_slug_short:
+        preview_slug_short = "unnamed"
+    descriptor = (
+        f"plot_multi_trap_lambda_space__{ts}"
+        f"__traps-{len(labels)}"
+        f"__labels-{preview_slug_short}"
+        f"__nsamples-{int(n_samples)}"
+        f"__basis-nondim"
+        f"__dens-{float(density_scale):.3f}"
+        f"__surface-{int(bool(show_surface))}"
+    )
+    digest_input = f"{descriptor}__full_labels={full_label_slug}"
+    digest = hashlib.sha1(digest_input.encode("utf-8")).hexdigest()[:10]
+    return f"{descriptor}__{digest}.html"
+
+
+def _build_multi_trap_lambda_html_fallback_filename(*, labels: Sequence[str]) -> str:
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    digest = hashlib.sha1("||".join(str(x) for x in labels).encode("utf-8")).hexdigest()[:12]
+    return f"plot_multi_trap_lambda_space__{ts}__{digest}.html"
 
 
 def _decimate_scatter_points(points: np.ndarray, *, max_points: int | None) -> np.ndarray:

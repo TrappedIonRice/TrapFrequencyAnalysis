@@ -87,6 +87,13 @@ class _FakePlotlyFigure:
 
 
 def _install_fake_plotly(monkeypatch):
+    figures = []
+
+    def _figure():
+        fig = _FakePlotlyFigure()
+        figures.append(fig)
+        return fig
+
     def _scatter3d(**kwargs):
         return {"type": "Scatter3d", **kwargs}
 
@@ -94,9 +101,10 @@ def _install_fake_plotly(monkeypatch):
         return {"type": "Mesh3d", **kwargs}
 
     fake_go = types.SimpleNamespace(
-        Figure=_FakePlotlyFigure,
+        Figure=_figure,
         Scatter3d=_scatter3d,
         Mesh3d=_mesh3d,
+        _figures=figures,
     )
     monkeypatch.setattr(freqspace, "go", fake_go)
     return fake_go
@@ -589,6 +597,52 @@ def test_multi_trap_plotly_can_save_html(monkeypatch, tmp_path):
     assert "plot_multi_trap_frequency_space" in fig.written_html_path
 
 
+def test_multi_trap_plotly_can_optionally_save_lambda_html(monkeypatch, tmp_path):
+    fake_go = _install_fake_plotly(monkeypatch)
+    toy_model = _toy_model(lower=(0.0, 0.0, 0.0), upper=(1.0, 1.0, 1.0))
+    toy_boundary = _toy_boundary_sampling(
+        np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=float,
+        )
+    )
+    monkeypatch.setattr(freqspace, "_build_model_from_spec", lambda *args, **kwargs: toy_model)
+    monkeypatch.setattr(freqspace, "sample_reachable_boundary", lambda *args, **kwargs: toy_boundary)
+    monkeypatch.setattr(freqspace, "_default_multi_trap_html_output_dir", lambda: tmp_path / "freq")
+    monkeypatch.setattr(freqspace, "_default_multi_trap_lambda_html_output_dir", lambda: tmp_path / "lambda")
+
+    fig, ax, out = freqspace.plot_multi_trap_frequency_space(
+        [
+            {"trap_name": "Simp58_101", "name": "S58 alpha 0"},
+            {"trap_name": "Simp58_101", "name": "S58 alpha 45"},
+        ],
+        output="hz",
+        backend="plotly",
+        n_samples=8,
+        show=False,
+        show_surface=False,
+        save_plotly_html=True,
+        plot_lambda_space=True,
+    )
+    assert fig is not None
+    assert ax is None
+    assert len(out) == 2
+    assert len(fake_go._figures) == 2
+    freq_fig = fake_go._figures[0]
+    lambda_fig = fake_go._figures[1]
+    assert freq_fig.written_html_path is not None
+    assert lambda_fig.written_html_path is not None
+    assert str(tmp_path / "freq") in freq_fig.written_html_path
+    assert str(tmp_path / "lambda") in lambda_fig.written_html_path
+    assert "plot_multi_trap_frequency_space" in freq_fig.written_html_path
+    assert "plot_multi_trap_lambda_space" in lambda_fig.written_html_path
+
+
 def test_multi_trap_html_filename_stays_reasonable_with_many_labels():
     labels = [f"simp58_101_{k}deg" for k in range(0, 90, 5)]
     name = freqspace._build_multi_trap_html_filename(
@@ -600,3 +654,40 @@ def test_multi_trap_html_filename_stays_reasonable_with_many_labels():
     )
     assert name.endswith(".html")
     assert len(name) <= 200
+
+
+def test_single_trap_wrapper_can_optionally_create_lambda_plot(monkeypatch):
+    fake_go = _install_fake_plotly(monkeypatch)
+    toy_model = _toy_model(lower=(0.0, 0.0, 0.0), upper=(1.0, 1.0, 1.0))
+    toy_boundary = _toy_boundary_sampling(
+        np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=float,
+        )
+    )
+    monkeypatch.setattr(freqspace, "_build_model_from_spec", lambda *args, **kwargs: toy_model)
+    monkeypatch.setattr(freqspace, "sample_reachable_boundary", lambda *args, **kwargs: toy_boundary)
+
+    fig, ax, out = freqspace.plot_trap_frequency_space(
+        {"trap_name": "Simp58_101"},
+        backend="plotly",
+        n_samples=8,
+        show=False,
+        show_surface=False,
+        plot_lambda_space=True,
+    )
+    assert fig is not None
+    assert ax is None
+    assert out.n_points >= 0
+    assert len(fake_go._figures) == 2
+    lambda_fig = fake_go._figures[1]
+    scene = lambda_fig.layout["scene"]
+    assert scene["aspectmode"] == "cube"
+    assert scene["xaxis"]["title"]["text"] == "lambda_1"
+    assert scene["yaxis"]["title"]["text"] == "lambda_2"
+    assert scene["zaxis"]["title"]["text"] == "lambda_3"

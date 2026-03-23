@@ -140,7 +140,19 @@ def run_frequency_demo_multi(
     """
     Overlay multiple trap frequency-space reachability clouds on one plot.
     """
+    time1 = time.time()
     specs = [
+        # {
+        #     "trap_name": "NISTMOCK",
+        #     "name": "NISTMOCK",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 45.0,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
         {
             "trap_name": "2Dtrap_125_45deg_200exp",
             "name": "2Dtrap_125_45deg_200exp___pm100bounds",
@@ -218,28 +230,28 @@ def run_frequency_demo_multi(
         #     "ion_charge_c": constants.ion_charge,
         #     "poly_is_potential_energy": False,
         # },
-        {
-            "trap_name": "InnTrapFine",
-            "name": "InnTrapFine",
-            "dc_electrodes": [f"DC{i}" for i in range(1, 13)],
-            "rf_dc_electrodes": ["RF1", "RF2"],
-            "alpha_deg": 0.0,
-            "u_bounds": [(-100.0, 100.0)] * 14 + [(0.0, constants.RF_S_MAX_DEFAULT)],
-            "ion_mass_kg": constants.ion_mass,
-            "ion_charge_c": constants.ion_charge,
-            "poly_is_potential_energy": False,
-        },
-        {
-            "trap_name": "1252dTrapRice",
-            "name": "1252dTrapRice",
-            "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
-            "rf_dc_electrodes": ["RF1", "RF2"],
-            "alpha_deg": 0.0,
-            "u_bounds": [(-100.0, 100.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
-            "ion_mass_kg": constants.ion_mass,
-            "ion_charge_c": constants.ion_charge,
-            "poly_is_potential_energy": False,
-        },
+        # {
+        #     "trap_name": "InnTrapFine",
+        #     "name": "InnTrapFine",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 13)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-100.0, 100.0)] * 14 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
+        # {
+        #     "trap_name": "1252dTrapRice",
+        #     "name": "1252dTrapRice",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 0.0,
+        #     "u_bounds": [(-100.0, 100.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
         # {
         #     "trap_name": "simp58_101",
         #     "name": "simp58_101_42deg",
@@ -273,17 +285,17 @@ def run_frequency_demo_multi(
         #     "ion_charge_c": constants.ion_charge,
         #     "poly_is_potential_energy": False,
         # },
-        {
-            "trap_name": "simp58_101",
-            "name": "simp58_101_45deg",
-            "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
-            "rf_dc_electrodes": ["RF1", "RF2"],
-            "alpha_deg": 45,
-            "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
-            "ion_mass_kg": constants.ion_mass,
-            "ion_charge_c": constants.ion_charge,
-            "poly_is_potential_energy": False,
-        },
+        # {
+        #     "trap_name": "simp58_101",
+        #     "name": "simp58_101_45deg",
+        #     "dc_electrodes": [f"DC{i}" for i in range(1, 11)],
+        #     "rf_dc_electrodes": ["RF1", "RF2"],
+        #     "alpha_deg": 45,
+        #     "u_bounds": [(-10.0, 10.0)] * 12 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+        #     "ion_mass_kg": constants.ion_mass,
+        #     "ion_charge_c": constants.ion_charge,
+        #     "poly_is_potential_energy": False,
+        # },
         # {
         #     "trap_name": "simp58_101",
         #     "name": "simp58_101_46deg",
@@ -333,15 +345,18 @@ def run_frequency_demo_multi(
         specs,
         n_samples=n_samples,
         random_seed=random_seed,
+        plot_lambda_space=True,
         output="hz",
         backend="plotly",
         density_scale=1.4,
         show_surface=True,
         max_surface_triangles=4000,
         max_scatter_points=10000,
-        show=True,
+        show=False,
         save_plotly_html= True,
     )
+    time2 = time.time()
+    print(f"Total time: {time2 - time1:.2f} seconds")
 
 if __name__ == "__main__":
     # run_frequency_demo_single()

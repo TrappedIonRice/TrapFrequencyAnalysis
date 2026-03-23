@@ -3657,6 +3657,127 @@
       "path": "simp58_101\\deg4\\53b2abaff76d.npz",
       "polyfit_deg": 4,
       "trap_name": "simp58_101"
+    },
+    {
+      "cfg": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_bounds": [
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ],
+          [
+            -500.0,
+            500.0
+          ]
+        ],
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "num_samples": 80,
+        "polyfit_deg": 4,
+        "rf_dc_bounds": [
+          [
+            -50.0,
+            50.0
+          ],
+          [
+            -50.0,
+            50.0
+          ]
+        ],
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "s_bounds": [
+          0.0,
+          7.036193308495679
+        ],
+        "seed": 0,
+        "trap_name": "NISTMOCK",
+        "version": "A_cache_v5"
+      },
+      "cfg_key": {
+        "basis": "nondim",
+        "center_region_x_um": 100.0,
+        "center_region_y_um": 20.0,
+        "center_region_z_um": 20.0,
+        "dc_electrodes": [
+          "DC1",
+          "DC2",
+          "DC3",
+          "DC4",
+          "DC5",
+          "DC6",
+          "DC7",
+          "DC8",
+          "DC9",
+          "DC10"
+        ],
+        "ion_mass_kg": 2.885e-25,
+        "nd_L0_m": 1e-05,
+        "polyfit_deg": 4,
+        "rf_dc_electrodes": [
+          "RF1",
+          "RF2"
+        ],
+        "trap_name": "NISTMOCK",
+        "version": "A_cache_v5"
+      },
+      "created_utc": "2026-03-11T22:05:03.621148+00:00",
+      "fit_rel_rmse": 1.8381172742427865e-09,
+      "key": "c2eafef198765e5fcf8799e5b934e3d36f4257a5c418b8650097a807d3cfb2db",
+      "key12": "c2eafef19876",
+      "path": "NISTMOCK\\deg4\\c2eafef19876.npz",
+      "polyfit_deg": 4,
+      "trap_name": "NISTMOCK"
     }
   ],
   "schema_version": "1"
