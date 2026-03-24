@@ -48,6 +48,40 @@ class Umin_ReqMixin:
         X = center_poly.transform(np.array([[x, y, z]]))
         return float(center_model.predict(X)[0])
 
+    def get_center_poly_c_vector(self, polyfit_deg: int = 4, return_powers: bool = False):
+        """
+        Ensure the DC center-region polynomial fit exists and return its coefficient vector.
+
+        The coefficient order matches sklearn's PolynomialFeatures include_bias=True,
+        i.e. the order in center_poly.powers_ (lexicographic by total degree).
+
+        Term order examples (degree=4)::
+            1,
+            x, y, z,
+            x^2, x y, x z, y^2, y z, z^2,
+            x^3, x^2 y, x^2 z, x y^2, x y z, x z^2, y^3, y^2 z, y z^2, z^3,
+            x^4, x^3 y, x^3 z, x^2 y^2, x^2 y z, x^2 z^2,
+            x y^3, x y^2 z, x y z^2, x z^3,
+            y^4, y^3 z, y^2 z^2, y z^3, z^4
+
+        So: xy^2 is after x^2 z (it appears in the degree-3 block as x y^2),
+        and x^3 y z (degree=5 term) is NOT included for polyfit_deg=4.
+        If you need explicit term positions, pass return_powers=True.
+
+        Args:
+            polyfit_deg: polynomial degree for the center fit if it needs to be created.
+            return_powers: if True, also return the integer powers array (n_terms, 3).
+
+        Returns:
+            c (np.ndarray) or (c, powers) if return_powers=True.
+        """
+        self._ensure_dc_center_fit(polyfit_deg=polyfit_deg)
+        center_model, center_poly, _ = self.center_fits[self.trapVariables.dc_key]
+        c = np.asarray(center_model.coef_, dtype=float).copy()
+        if return_powers:
+            return c, np.asarray(center_poly.powers_, dtype=int).copy()
+        return c
+
     def evaluate_center_poly_1stderivatives(self, x, y, z):
         self._ensure_dc_center_fit()
         center_model, center_poly, _ = self.center_fits[self.trapVariables.dc_key]
