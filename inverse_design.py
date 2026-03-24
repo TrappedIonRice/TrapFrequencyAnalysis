@@ -177,8 +177,10 @@ def solve_u_for_targets(
     # Solve for u
     solver_info: Dict[str, object] = {}
     status = "ok"
-    if objective not in ("l2", "linf", "weighted_l2", "avg_max_dc", "l2_dc"):
-        raise ValueError("objective must be 'l2', 'linf', 'weighted_l2', 'avg_max_dc', or 'l2_dc'")
+    if objective not in ("l2", "linf", "weighted_l2", "avg_max_dc", "l2_dc", "l2_sx100", "s_min", "s_max"):
+        raise ValueError(
+            "objective must be 'l2', 'linf', 'weighted_l2', 'avg_max_dc', 'l2_dc', 'l2_sx100', 's_min', or 's_max'"
+        )
 
     has_ineq = Gmat is not None and hvec is not None and Gmat.shape[0] > 0
     bounded_mode = (
@@ -223,7 +225,8 @@ def solve_u_for_targets(
             solver_info.update(info)
             solver_info["solver_name"] = "l2_min_norm"
             solver_info["message"] = info.get("message", "")
-    elif objective == "weighted_l2":
+    elif objective in ("weighted_l2", "l2_sx100"):
+        s_penalty_scale_use = 100.0 if objective == "l2_sx100" else s_penalty_scale
         if bounded_mode:
             if not _HAVE_SCIPY:
                 raise RuntimeError("SciPy is required for constrained weighted_l2 solve")
@@ -236,19 +239,23 @@ def solve_u_for_targets(
                 Mmat,
                 b,
                 bounds_arg,
-                s_penalty_scale,
+                s_penalty_scale_use,
                 G_ub=Gmat,
                 h_ub=hvec,
             )
             solver_info.update(info)
-            solver_info["solver_name"] = "weighted_l2_constrained"
+            solver_info["solver_name"] = (
+                "l2_sx100_constrained" if objective == "l2_sx100" else "weighted_l2_constrained"
+            )
             solver_info["message"] = info.get("message", "")
         else:
             u, info = _solve_weighted_l2_min_norm(
-                Mmat, b, s_penalty_scale=s_penalty_scale, ridge_lambda=ridge_lambda
+                Mmat, b, s_penalty_scale=s_penalty_scale_use, ridge_lambda=ridge_lambda
             )
             solver_info.update(info)
-            solver_info["solver_name"] = "weighted_l2_min_norm"
+            solver_info["solver_name"] = (
+                "l2_sx100_min_norm" if objective == "l2_sx100" else "weighted_l2_min_norm"
+            )
             solver_info["message"] = info.get("message", "")
     elif objective == "l2_dc":
         if u_bounds is None:
@@ -292,6 +299,27 @@ def solve_u_for_targets(
         )
         solver_info.update(info)
         solver_info["solver_name"] = "avg_max_dc_lp"
+        solver_info["message"] = info.get("message", "")
+    elif objective in ("s_min", "s_max"):
+        if not _HAVE_SCIPY:
+            raise RuntimeError("SciPy is required for s_min/s_max solve")
+        bounds_arg = u_bounds
+        if bounds_arg is None and enforce_bounds:
+            bounds_arg = _build_u_bounds_from_blocks(
+                dc_bounds, rf_dc_bounds, s_bounds, len(dc_electrodes), len(rf_dc_electrodes)
+            )
+        if bounds_arg is None:
+            raise ValueError(f"u_bounds is required for objective='{objective}'")
+        u, info = _solve_s_coordinate_constrained(
+            Mmat,
+            b,
+            bounds_arg,
+            maximize_s=(objective == "s_max"),
+            G_ub=Gmat,
+            h_ub=hvec,
+        )
+        solver_info.update(info)
+        solver_info["solver_name"] = f"{objective}_constrained"
         solver_info["message"] = info.get("message", "")
     else:
         if not _HAVE_SCIPY:
@@ -960,6 +988,66 @@ def _solve_linf_lp(
     if not res.success or res.x is None:
         return None, info
     u = np.asarray(res.x[:n], dtype=float)
+    return u, info
+
+
+def _solve_s_coordinate_constrained(
+    Mmat: np.ndarray,
+    b: np.ndarray,
+    u_bounds: List[Tuple[float | None, float | None]],
+    *,
+    maximize_s: bool,
+    G_ub: np.ndarray | None = None,
+    h_ub: np.ndarray | None = None,
+) -> Tuple[np.ndarray, Dict[str, object]]:
+    M = np.asarray(Mmat, dtype=float)
+    b = np.asarray(b, dtype=float).reshape(-1)
+    n = M.shape[1]
+
+    bounds = _normalize_bounds(u_bounds, n)
+    lo, hi = bounds[-1]
+    if lo is None or lo < 0.0:
+        bounds[-1] = (0.0, hi)
+
+    sign = -1.0 if maximize_s else 1.0
+
+    def obj(u: np.ndarray) -> float:
+        return float(sign * u[-1])
+
+    def jac(u: np.ndarray) -> np.ndarray:
+        grad = np.zeros(n, dtype=float)
+        grad[-1] = sign
+        return grad
+
+    cons = [
+        {
+            "type": "eq",
+            "fun": lambda u: M @ u - b,
+            "jac": lambda u: M,
+        }
+    ]
+    if G_ub is not None and h_ub is not None and np.asarray(G_ub).size > 0:
+        Gv = np.asarray(G_ub, dtype=float)
+        hv = np.asarray(h_ub, dtype=float).reshape(-1)
+        cons.append(
+            {
+                "type": "ineq",
+                "fun": lambda u, G=Gv, h=hv: h - G @ u,
+                "jac": lambda u, G=Gv: -G,
+            }
+        )
+
+    u0 = np.zeros(n, dtype=float)
+    res = minimize(obj, u0, jac=jac, constraints=cons, bounds=bounds, method="SLSQP")
+    info = {
+        "success": bool(res.success),
+        "message": res.message,
+        "objective": "s_max" if maximize_s else "s_min",
+    }
+    if not res.success or res.x is None:
+        return None, info
+    u = np.asarray(res.x, dtype=float)
+    info["s_objective_value"] = float(u[-1])
     return u, info
 
 

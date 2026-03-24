@@ -1,0 +1,5 @@
+# Pull in the repo's core dependencies
+-r ../requirements.txt
+
+# App-specific dependency for in-app Plotly rendering
+plotly>=5,<6

@@ -108,6 +108,34 @@ RF_S_MAX_DEFAULT = (600.0**2) / (RF_OMEGA_REF_MHZ**2)
 ND_L0_M = 10e-6
 ND_L0_UM = 10.0
 
+INVERSE_APP_TRAP_REGISTRY = {
+    "2Dtrap_125_45deg_200exp": {
+        "display_label": "2Dtrap_125_45deg_200exp",
+        "trap_name": "2Dtrap_125_45deg_200exp",
+        "dc_electrodes": tuple(f"DC{i}" for i in range(1, 21)),
+        "rf_dc_electrodes": ("RF1", "RF2"),
+    },
+    "simp58_101_GEN3": {
+        "display_label": "simp58_101_GEN3",
+        "trap_name": "simp58_101",
+        "dc_electrodes": tuple(f"DC{i}" for i in range(1, 11)),
+        "rf_dc_electrodes": ("RF1", "RF2"),
+    },
+    "1252dTrapRice_old": {
+        "display_label": "1252dTrapRice_old",
+        "trap_name": "1252dTrapRice",
+        "dc_electrodes": tuple(f"DC{i}" for i in range(1, 21)),
+        "rf_dc_electrodes": ("RF1", "RF2"),
+    },
+    "InnTrapFine": {
+        "display_label": "InnTrapFine",
+        "trap_name": "InnTrapFine",
+        "dc_electrodes": tuple(f"DC{i}" for i in range(1, 13)),
+        "rf_dc_electrodes": ("RF1", "RF2"),
+    },
+}
+INVERSE_APP_TRAP_OPTIONS = tuple(INVERSE_APP_TRAP_REGISTRY.keys())
+
 
 
 # TODO: The values should be applied differently, the current implemetation is flawed
