@@ -80,6 +80,7 @@ class Simulation(
         # init other variables
         self.center_fits = {}  # Placeholder for the center fit model
         self.ion_equilibrium_positions = {}
+        self.equilibrium_metadata = {}
         self.ion_eigenvectors = {}
         self.ion_eigenvalues = {}
         self.normal_modes_and_frequencies = {}
@@ -259,6 +260,7 @@ class Simulation(
     def clear_held_results(self):
         self.center_fits = {}  # Placeholder for the center fit model
         self.ion_equilibrium_positions = {}
+        self.equilibrium_metadata = {}
         self.ion_eigenvectors = {}
         self.ion_eigenvalues = {}
         self.normal_modes_and_frequencies = {}

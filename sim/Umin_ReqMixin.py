@@ -15,6 +15,14 @@ import constants
 from scipy.optimize import minimize, BFGS, basinhopping
 from scipy.optimize import check_grad
 from itertools import product
+from sim.cryo2d_closecopy import CRYO2D_CLOSECOPY, solve_cryo2d_closecopy
+from sim.cryo2d_closecopy_2 import CRYO2D_CLOSECOPY_2, solve_cryo2d_closecopy_2
+from sim.equilibrium_minimizers import (
+    CRYO2DCOPY,
+    QUARTIC2D_101,
+    solve_cryo2dcopy,
+    solve_quartic2d_101,
+)
 # from numba import njit, prange
 
 
@@ -810,6 +818,75 @@ class Umin_ReqMixin:
     def find_all_equilib_positions_dummy3(self):
         return self.find_all_equilib_positions_initialguess()
 
+    def _store_equilibrium_metadata(self, num_ions, minimizertype, metadata):
+        if not hasattr(self, "equilibrium_metadata") or self.equilibrium_metadata is None:
+            self.equilibrium_metadata = {}
+        bucket = self.equilibrium_metadata.setdefault(int(num_ions), {})
+        bucket[str(minimizertype)] = metadata
+
+    def get_equilibrium_metadata(self, num_ions, minimizertype=None):
+        metadata = getattr(self, "equilibrium_metadata", None)
+        if not isinstance(metadata, dict):
+            return None
+        bucket = metadata.get(int(num_ions))
+        if not isinstance(bucket, dict):
+            return None
+        if minimizertype is None:
+            return bucket
+        return bucket.get(str(minimizertype))
+
+    def find_equilib_position_single_quartic2d_101(self, num_ions):
+        result = solve_quartic2d_101(self, num_ions)
+        self.ion_equilibrium_positions[num_ions] = np.asarray(result.positions, dtype=float)
+        self._store_equilibrium_metadata(num_ions, QUARTIC2D_101, result.to_metadata())
+        return result
+
+    def find_all_equilib_positions_quartic2d_101(self):
+        out = {}
+        for num_ions in range(1, constants.max_ion_in_chain + 1):
+            result = self.find_equilib_position_single_quartic2d_101(num_ions)
+            out[num_ions] = np.asarray(result.positions_dimless, dtype=float)
+        return out
+
+    def find_equilib_position_single_cryo2dcopy(self, num_ions):
+        result = solve_cryo2dcopy(self, num_ions)
+        self.ion_equilibrium_positions[num_ions] = np.asarray(result.positions, dtype=float)
+        self._store_equilibrium_metadata(num_ions, CRYO2DCOPY, result.to_metadata())
+        return result
+
+    def find_all_equilib_positions_cryo2dcopy(self):
+        out = {}
+        for num_ions in range(1, constants.max_ion_in_chain + 1):
+            result = self.find_equilib_position_single_cryo2dcopy(num_ions)
+            out[num_ions] = np.asarray(result.positions_dimless, dtype=float)
+        return out
+
+    def find_equilib_position_single_cryo2d_closecopy(self, num_ions):
+        result = solve_cryo2d_closecopy(self, num_ions)
+        self.ion_equilibrium_positions[num_ions] = np.asarray(result.positions, dtype=float)
+        self._store_equilibrium_metadata(num_ions, CRYO2D_CLOSECOPY, result.to_metadata())
+        return result
+
+    def find_all_equilib_positions_cryo2d_closecopy(self):
+        out = {}
+        for num_ions in range(1, constants.max_ion_in_chain + 1):
+            result = self.find_equilib_position_single_cryo2d_closecopy(num_ions)
+            out[num_ions] = np.asarray(result.positions_dimless, dtype=float)
+        return out
+
+    def find_equilib_position_single_cryo2d_closecopy_2(self, num_ions):
+        result = solve_cryo2d_closecopy_2(self, num_ions)
+        self.ion_equilibrium_positions[num_ions] = np.asarray(result.positions, dtype=float)
+        self._store_equilibrium_metadata(num_ions, CRYO2D_CLOSECOPY_2, result.to_metadata())
+        return result
+
+    def find_all_equilib_positions_cryo2d_closecopy_2(self):
+        out = {}
+        for num_ions in range(1, constants.max_ion_in_chain + 1):
+            result = self.find_equilib_position_single_cryo2d_closecopy_2(num_ions)
+            out[num_ions] = np.asarray(result.positions_dimless, dtype=float)
+        return out
+
     def find_equilib_position_single(self, num_ions, minimizertype="Normal"):
         if minimizertype == "Normal":
             return self.find_equilib_position_single_normal(num_ions)
@@ -821,6 +898,14 @@ class Umin_ReqMixin:
             return self.find_equilib_position_single_dummy2(num_ions)
         if minimizertype == "Dummy3":
             return self.find_equilib_position_single_dummy3(num_ions)
+        if minimizertype == QUARTIC2D_101:
+            return self.find_equilib_position_single_quartic2d_101(num_ions)
+        if minimizertype == CRYO2DCOPY:
+            return self.find_equilib_position_single_cryo2dcopy(num_ions)
+        if minimizertype == CRYO2D_CLOSECOPY:
+            return self.find_equilib_position_single_cryo2d_closecopy(num_ions)
+        if minimizertype == CRYO2D_CLOSECOPY_2:
+            return self.find_equilib_position_single_cryo2d_closecopy_2(num_ions)
         else:
             return None
 
@@ -835,6 +920,14 @@ class Umin_ReqMixin:
             return self.find_all_equilib_positions_dummy2()
         if minimizertype == "Dummy3":
             return self.find_all_equilib_positions_dummy3()
+        if minimizertype == QUARTIC2D_101:
+            return self.find_all_equilib_positions_quartic2d_101()
+        if minimizertype == CRYO2DCOPY:
+            return self.find_all_equilib_positions_cryo2dcopy()
+        if minimizertype == CRYO2D_CLOSECOPY:
+            return self.find_all_equilib_positions_cryo2d_closecopy()
+        if minimizertype == CRYO2D_CLOSECOPY_2:
+            return self.find_all_equilib_positions_cryo2d_closecopy_2()
         else:
             return None
 

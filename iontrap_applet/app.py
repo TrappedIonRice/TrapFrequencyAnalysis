@@ -43,6 +43,15 @@ try:
 except Exception:
     _HAS_MPL = False
 
+try:
+    from sim.equilibrium_viewer import (
+        build_equilibrium_figure,
+        build_equilibrium_summary_lines,
+    )
+except Exception:
+    build_equilibrium_figure = None
+    build_equilibrium_summary_lines = None
+
 
 # Persist last results and config across reruns
 if "res" not in st.session_state:
@@ -170,6 +179,28 @@ def _eq_from_ion_equilibrium_positions(sim, num_ions):
     return None
 
 
+def _eq_metadata_from_sim(sim, num_ions, minimizer_type):
+    if hasattr(sim, "get_equilibrium_metadata"):
+        try:
+            metadata = sim.get_equilibrium_metadata(num_ions, minimizer_type)
+        except TypeError:
+            metadata = sim.get_equilibrium_metadata(
+                num_ions,
+                minimizertype=minimizer_type,
+            )
+        if isinstance(metadata, dict):
+            return metadata
+
+    metadata_store = getattr(sim, "equilibrium_metadata", None)
+    if isinstance(metadata_store, dict):
+        bucket = metadata_store.get(num_ions)
+        if isinstance(bucket, dict):
+            metadata = bucket.get(minimizer_type)
+            if isinstance(metadata, dict):
+                return metadata
+    return None
+
+
 def compute_f110_max_matrix(tv, num_ions, preset, point=None, bounds=None):
     """
     Compute per-pair max g0 (Hz) within box bounds for the 5 symmetric inputs,
@@ -247,11 +278,21 @@ with st.sidebar:
             preset = st.text_input("Custom preset string", value="Simp58_101")
 
         num_ions = st.number_input(
-            "Number of ions", min_value=1, max_value=60, value=3, step=1
+            "Number of ions", min_value=1, max_value=120, value=3, step=1
         )
         minimizer_type = st.selectbox(
             "Equilibrium minimizer",
-            options=["Normal", "InitGuess", "Dummy1", "Dummy2", "Dummy3"],
+            options=[
+                "Normal",
+                "InitGuess",
+                "Dummy1",
+                "Dummy2",
+                "Dummy3",
+                "Quartic2D_101",
+                "cryo2dcopy",
+                "Cryo2d_closecopy",
+                "Cryo2d_closecopy_2",
+            ],
             index=0,
         )
         poly_deg = st.selectbox(
@@ -579,6 +620,9 @@ with st.sidebar:
         )
 
         run_btn = st.form_submit_button("Compute", type="primary")
+
+with st.sidebar:
+    show_equilibrium_viewer = st.checkbox("Show equilibrium viewer", value=False)
 
 
 # ------------------------------------------------------------
@@ -935,6 +979,7 @@ def compute_result(cfg_key: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     # Equilibrium positions
     eq_positions = _eq_from_ion_equilibrium_positions(sim, cfg["num_ions"])
+    eq_metadata = _eq_metadata_from_sim(sim, cfg["num_ions"], cfg["minimizer_type"])
 
     # Resonances
     out_res = None
@@ -958,6 +1003,7 @@ def compute_result(cfg_key: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
         "modes": modes,
         "dir_alignment": dir_alignment,  # optional but useful in UI
         "eq_positions": eq_positions,
+        "eq_metadata": eq_metadata,
         "resonances": out_res,
         "principal_dirs": principal_dirs,  # 3×3, rows: dir_0..2 in lab (x,y,z)
         "secular_frequencies_Hz": secular_freqs_Hz,  # (3,) for 1-ion if available
@@ -1018,6 +1064,8 @@ pending_cfg = {
 if run_btn:
     cfg = dict(pending_cfg)  # snapshot
     cfg_key = _hashable_cfg(cfg)
+    if cfg.get("minimizer_type") == "Quartic2D_101":
+        cfg_key = f"{cfg_key}:{time.time_ns()}"
     try:
         t0 = time.time()
         res = compute_result(cfg_key, cfg)
@@ -1110,6 +1158,47 @@ if res is not None:
                 df_eq[["x", "y", "z"]] = df_eq[["x", "y", "z"]] * scale
             st.caption("source: sim.ion_equilibrium_positions[num_ions]")
             st.dataframe(df_eq, use_container_width=True)
+
+        if show_equilibrium_viewer:
+            st.subheader("Equilibrium viewer")
+            eq_metadata = res.get("eq_metadata")
+            if arr_to_show is None:
+                st.caption("No equilibrium positions are available for plotting.")
+            elif not isinstance(eq_metadata, dict):
+                st.caption("No equilibrium metadata is available for this run.")
+            elif not _HAS_MPL or build_equilibrium_figure is None:
+                st.caption("Matplotlib equilibrium viewer is unavailable in this environment.")
+            else:
+                fig = None
+                try:
+                    fig = build_equilibrium_figure(
+                        arr_to_show,
+                        seed_positions=eq_metadata.get("seed_positions"),
+                        plane_normal=eq_metadata.get("plane_normal"),
+                        title="Equilibrium positions",
+                    )
+                except Exception:
+                    fig = None
+
+                if fig is not None:
+                    st.pyplot(fig)
+                    try:
+                        import matplotlib.pyplot as plt
+
+                        plt.close(fig)
+                    except Exception:
+                        pass
+                else:
+                    st.caption("Equilibrium viewer data could not be rendered.")
+
+                summary_lines = []
+                if build_equilibrium_summary_lines is not None:
+                    try:
+                        summary_lines = build_equilibrium_summary_lines(eq_metadata)
+                    except Exception:
+                        summary_lines = []
+                if summary_lines:
+                    st.text("\n".join(summary_lines))
 
         st.subheader("Frequencies (Hz)")
         df_f = pd.DataFrame(
