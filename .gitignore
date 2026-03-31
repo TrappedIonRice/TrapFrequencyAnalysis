@@ -6,3 +6,4 @@ Data/**/*.txt
 venv/
 env/
 /plot_multi_trap_lambda_space_htmlViews
+*.html
