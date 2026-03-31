@@ -167,6 +167,21 @@ def build_equilibrium_summary_lines(metadata: Any) -> list[str]:
     if trap_model:
         lines.append(f"trap model: {trap_model}")
 
+    reduced_coeff_labels = ("a20", "a02", "a40", "a22", "a04")
+    if all(metadata.get(coeff_label) is not None for coeff_label in reduced_coeff_labels):
+        lines.append(
+            "reduced trap: U_trap(x,z) = a20 x^2 + a02 z^2 + "
+            "a40 x^4 + a22 x^2 z^2 + a04 z^4"
+        )
+    for coeff_label in reduced_coeff_labels:
+        coeff_value = metadata.get(coeff_label)
+        if coeff_value is None:
+            continue
+        try:
+            lines.append(f"{coeff_label}: {float(coeff_value):.6g}")
+        except (TypeError, ValueError):
+            pass
+
     grad_norm = metadata.get("projected_gradient_max_norm")
     if grad_norm is not None:
         try:

@@ -71,6 +71,11 @@ class Cryo2DCloseCopy2Result:
     distance_moved_from_seed_dimless: float
     trap_model: str
     reduced_even_model: bool
+    a20: float
+    a02: float
+    a40: float
+    a22: float
+    a04: float
     nfev: int | None = None
     njev: int | None = None
     nit: int | None = None
@@ -120,6 +125,11 @@ class Cryo2DCloseCopy2Result:
             ),
             "trap_model": str(self.trap_model),
             "reduced_even_model": bool(self.reduced_even_model),
+            "a20": float(self.a20),
+            "a02": float(self.a02),
+            "a40": float(self.a40),
+            "a22": float(self.a22),
+            "a04": float(self.a04),
             "nfev": self.nfev,
             "njev": self.njev,
             "nit": self.nit,
@@ -624,6 +634,11 @@ def solve_cryo2d_closecopy_2(
         ),
         trap_model=_TRAP_MODEL_NAME,
         reduced_even_model=True,
+        a20=float(model.a20),
+        a02=float(model.a02),
+        a40=float(model.a40),
+        a22=float(model.a22),
+        a04=float(model.a04),
         nfev=getattr(refine_res, "nfev", None),
         njev=getattr(refine_res, "njev", None),
         nit=getattr(refine_res, "nit", getattr(refine_res, "niter", None)),

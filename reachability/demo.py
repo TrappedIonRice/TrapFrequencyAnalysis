@@ -159,7 +159,8 @@ def run_frequency_demo_multi(
             "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
             "rf_dc_electrodes": ["RF1", "RF2"],
             "alpha_deg": 0.0,
-            "u_bounds": [(-100.0, 100.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+            "u_bounds": [(-50.0, 50.0)] * 22
+            + [(constants.RF_S_MAX_DEFAULT * 5.9, constants.RF_S_MAX_DEFAULT*6)],
             "ion_mass_kg": constants.ion_mass,
             "ion_charge_c": constants.ion_charge,
             "poly_is_potential_energy": False,
