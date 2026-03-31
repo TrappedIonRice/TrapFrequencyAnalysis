@@ -154,8 +154,20 @@ def run_frequency_demo_multi(
         #     "poly_is_potential_energy": False,
         # },
         {
-            "trap_name": "2Dtrap_125_45deg_200exp",
-            "name": "2Dtrap_125_45deg_200exp___pm100bounds",
+            "trap_name": "2D_V4_3_125_blades_only_Original_trap",
+            "name": "2D_V4_3_125_blades_only_Original_trap",
+            "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+            "rf_dc_electrodes": ["RF1", "RF2"],
+            "alpha_deg": 0.0,
+            "u_bounds": [(-100.0, 100.0)] * 22 + [(0.0, constants.RF_S_MAX_DEFAULT)],
+            "ion_mass_kg": constants.ion_mass,
+            "ion_charge_c": constants.ion_charge,
+            "poly_is_potential_energy": False,
+        },
+
+        {
+            "trap_name": "2D trap V4.4.125 - c - 75deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv",
+            "name": "2D trap V4.4.125 - c - 75deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv",
             "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
             "rf_dc_electrodes": ["RF1", "RF2"],
             "alpha_deg": 0.0,

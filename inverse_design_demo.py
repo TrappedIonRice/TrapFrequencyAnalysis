@@ -86,12 +86,12 @@ def run_demo() -> None:
     # )
 
     # # Trap/fit configuration for 2Dtrap_125_45deg_200exp
-    trap_name = "2D trap V4.4.125 - c - 65deg 150um ground_MORE_exposed_0.1_DC_With_RF_366_+_curv"
+    trap_name = "2D trap V4.4.125 - c - Extra_75deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv"
     dc_electrodes = [f"DC{i}" for i in range(1, 21)]
 
     u_bounds = (
-        [(-45, 90)] * 20  # DC1..DC10
-        + [(-45.00000, 45.00000)] * 2  # RF1_DC, RF2_DC
+        [(-50, 100)] * 20  # DC1..DC10
+        + [(-100.00000, 100.00000)] * 2  # RF1_DC, RF2_DC
         + [(0.0, constants.RF_S_MAX_DEFAULT*100)]  # s = V^2 / omega^2
     )
 

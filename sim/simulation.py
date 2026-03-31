@@ -1147,7 +1147,7 @@ def main_2():
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("InnTrapFine", tv)
+    sim = Simulation("2D trap V4.4.125 - c - Official_90deg 150um ground_MORE_exposed_0.1_DC_With_RF_284_+_curv", tv)
 
     # Build fits, equilibrium, and single-ion modes
     sim._smoke_test_new_stack(n_ions=1, poly_deg=4)
