@@ -8,11 +8,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from equilibrium_playground.cryo2d_closecopy_2 import Cryo2DCloseCopy2Result
+from equilibrium_playground.symmetry_enforced_harmonic2d import (
+    SymmetryEnforcedHarmonic2DResult,
+)
 from equilibrium_playground.wrappers import BestOfKResult
 
 
 def build_result_figure(
-    result: Cryo2DCloseCopy2Result,
+    result: Cryo2DCloseCopy2Result | SymmetryEnforcedHarmonic2DResult,
     *,
     title: str | None = None,
 ):
@@ -55,7 +58,7 @@ def build_result_figure(
 
 
 def format_result_summary(
-    result: Cryo2DCloseCopy2Result,
+    result: Cryo2DCloseCopy2Result | SymmetryEnforcedHarmonic2DResult,
     *,
     wrapper_result: BestOfKResult | None = None,
 ) -> list[str]:
@@ -63,6 +66,34 @@ def format_result_summary(
 
     if result is None:
         return []
+
+    if isinstance(result, SymmetryEnforcedHarmonic2DResult):
+        trap = result.trap_parameters
+        lines = [
+            "minimizer: SymmetryEnforced_Harmonic2D",
+            f"N: {int(result.total_ion_count)}",
+            f"success: {bool(result.success)}",
+            f"message: {result.message}",
+            f"energy: {float(result.energy):.8g}",
+            f"trap mode: {result.trap_input_mode}",
+            f"omega_x: {float(trap['omega_x']):.6g}",
+            f"omega_z: {float(trap['omega_z']):.6g}",
+            f"alpha: {float(trap['alpha']):.6g}",
+            f"scale: {float(trap['scale']):.6g}",
+            f"a_x: {float(trap['a_x']):.6g}",
+            f"a_z: {float(trap['a_z']):.6g}",
+            f"num_ions_vert: {int(result.num_ions_vert)}",
+            f"num_ions_hor: {int(result.num_ions_hor)}",
+            f"num_ions_free: {int(result.num_ions_free)}",
+            f"seed family: {result.seed_metadata['seed_family']}",
+            f"seed scale: {float(result.seed_metadata['seed_scale']):.6g}",
+            f"seed jitter: {float(result.seed_metadata['seed_jitter']):.6g}",
+            f"seed-to-final rms move: {float(result.seed_to_final_rms_move):.6g}",
+            f"max |grad_reduced|: {float(result.reduced_gradient_max_norm):.3e}",
+            f"max |grad_raw|: {float(result.raw_gradient_max_norm):.3e}",
+            f"optimizer: {result.optimizer_path}",
+        ]
+        return lines
 
     coeffs = result.coefficients
     lines = [
@@ -93,7 +124,7 @@ def format_result_summary(
 
 
 def print_result_summary(
-    result: Cryo2DCloseCopy2Result,
+    result: Cryo2DCloseCopy2Result | SymmetryEnforcedHarmonic2DResult,
     *,
     wrapper_result: BestOfKResult | None = None,
 ) -> None:
@@ -104,7 +135,7 @@ def print_result_summary(
 
 
 def metadata_from_result(
-    result: Cryo2DCloseCopy2Result,
+    result: Cryo2DCloseCopy2Result | SymmetryEnforcedHarmonic2DResult,
     *,
     wrapper_result: BestOfKResult | None = None,
 ) -> dict[str, Any]:
