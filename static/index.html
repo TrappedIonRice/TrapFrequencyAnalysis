@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trapped Ion Inverse Control</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<style>
+body { font-size: 0.87rem; }
+.knob-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.knob-label { width: 80px; text-align: right; flex-shrink: 0; font-weight: 500; }
+.knob-val { width: 64px; text-align: right; font-family: monospace; font-size: 0.82rem; }
+.knob-unit { width: 30px; color: #888; font-size: 0.78rem; }
+.knob-slider { flex: 1; }
+.btn-pm { width: 24px; height: 24px; padding: 0; font-size: 0.75rem; flex-shrink: 0; }
+.infeas-box { display: none; border: 2px solid #dc3545; border-radius: 4px;
+  padding: 6px 10px; background: #fff5f5; margin-top: 8px; }
+.infeas-box.active { display: flex; align-items: center; gap: 8px; animation: flash 0.3s; }
+@keyframes flash { 0%,100%{background:#fff5f5} 50%{background:#ffd0d0} }
+.warn-box { display: none; background: #fff8e1; border: 1px solid #ffc107;
+  border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; margin-top: 4px; }
+.warn-box.active { display: block; }
+#volt-table td, #volt-table th { padding: 2px 6px; font-family: monospace; font-size: 0.8rem; }
+.out-of-bounds { color: #dc3545; font-weight: bold; }
+.tab-pane { padding-top: 12px; }
+.section-label { font-size: 0.75rem; font-weight: 600; color: #666; text-transform: uppercase;
+  letter-spacing: 0.05em; margin-bottom: 4px; margin-top: 10px; }
+.full-target-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.full-target-input { width: 80px; font-family: monospace; font-size: 0.82rem; }
+#chart-3d { height: 320px; }
+#chart-volt { height: 200px; }
+</style>
+</head>
+<body>
+<div class="container-fluid" style="max-width:1100px">
+<div class="row mt-2 mb-1">
+  <div class="col">
+    <h5 class="mb-0">Trapped Ion Inverse Control
+      <small class="text-muted" style="font-size:0.75rem">— browser-only, all math client-side</small>
+    </h5>
+  </div>
+</div>
+
+<ul class="nav nav-tabs" id="mainTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-main">Main</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Settings</a></li>
+</ul>
+
+<div class="tab-content">
+<!-- ===== MAIN TAB ===== -->
+<div class="tab-pane fade show active" id="tab-main">
+<div class="row">
+  <!-- Left column: knobs -->
+  <div class="col-md-5">
+
+    <div class="d-flex align-items-center gap-2 mb-2 mt-1">
+      <label class="fw-semibold mb-0">Trap:</label>
+      <select id="trap-select" class="form-select form-select-sm" style="width:auto"></select>
+      <div class="ms-auto d-flex align-items-center gap-1">
+        <span class="fw-semibold">s:</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="s-mode" id="s-free" autocomplete="off" checked>
+          <label class="btn btn-outline-secondary" for="s-free">Free</label>
+          <input type="radio" class="btn-check" name="s-mode" id="s-pinned" autocomplete="off">
+          <label class="btn btn-outline-secondary" for="s-pinned">Pinned</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Position</div>
+    <div id="knob-x" class="knob-row" data-param="r_x" data-unit="µm"></div>
+    <div id="knob-y" class="knob-row" data-param="r_y" data-unit="µm"></div>
+    <div id="knob-z" class="knob-row" data-param="r_z" data-unit="µm"></div>
+
+    <div class="section-label">Orientation</div>
+    <div id="knob-theta" class="knob-row" data-param="theta" data-unit="°"></div>
+    <div id="knob-phi" class="knob-row" data-param="phi" data-unit="°"></div>
+    <div id="knob-alpha" class="knob-row" data-param="alpha" data-unit="°"></div>
+
+    <div class="section-label">Secular frequency</div>
+    <div id="knob-f1" class="knob-row" data-param="f1" data-unit="MHz"></div>
+    <div id="knob-f2" class="knob-row" data-param="f2" data-unit="MHz"></div>
+    <div id="knob-f3" class="knob-row" data-param="f3" data-unit="MHz"></div>
+
+    <!-- Infeasibility notice -->
+    <div id="infeas-box" class="infeas-box mt-2">
+      <span id="infeas-msg" class="text-danger fw-semibold" style="flex:1">⚠ Infeasible</span>
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" id="override-check">
+        <label class="form-check-label small" for="override-check">Override</label>
+      </div>
+    </div>
+
+    <!-- Position out-of-box warning -->
+    <div id="pos-warn" class="warn-box">⚠ Position outside fit-box — physics accuracy reduced</div>
+
+    <!-- Full-target mode -->
+    <hr class="my-2">
+    <div class="section-label">Full target (set all, then solve)</div>
+    <div class="row g-1" id="full-target-inputs">
+      <!-- populated by JS -->
+    </div>
+    <div class="d-flex gap-2 mt-2">
+      <button class="btn btn-sm btn-primary" id="btn-solve-target">Solve target</button>
+      <button class="btn btn-sm btn-outline-secondary" id="btn-reset-v">Reset voltages</button>
+    </div>
+
+  </div>
+
+  <!-- Right column: display -->
+  <div class="col-md-7">
+    <div id="chart-3d"></div>
+    <div class="mt-1 small text-muted" id="phys-display"></div>
+    <div id="chart-volt" class="mt-2"></div>
+    <div class="mt-1">
+      <table class="table table-sm table-bordered mb-0" id="volt-table">
+        <thead><tr>
+          <th>Electrode</th><th>Voltage (V)</th><th>LB</th><th>UB</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="mt-1 small" id="rf-display"></div>
+    <div class="mt-1 small text-muted" id="solve-status-display"></div>
+  </div>
+</div><!-- /row -->
+</div><!-- /tab-main -->
+
+<!-- ===== SETTINGS TAB ===== -->
+<div class="tab-pane fade" id="tab-settings">
+<div class="row">
+<div class="col-md-6">
+  <div class="section-label">Voltage bounds</div>
+  <div class="mb-2">
+    <label class="form-label mb-0">DC electrodes (V)</label>
+    <div class="d-flex gap-1">
+      <input type="number" id="s-dc-lo" class="form-control form-control-sm" style="width:90px" value="-500">
+      <span class="align-self-center">to</span>
+      <input type="number" id="s-dc-hi" class="form-control form-control-sm" style="width:90px" value="500">
+    </div>
+  </div>
+  <div class="mb-2">
+    <label class="form-label mb-0">RF-DC electrodes (V)</label>
+    <div class="d-flex gap-1">
+      <input type="number" id="s-rfdc-lo" class="form-control form-control-sm" style="width:90px" value="-50">
+      <span class="align-self-center">to</span>
+      <input type="number" id="s-rfdc-hi" class="form-control form-control-sm" style="width:90px" value="50">
+    </div>
+  </div>
+  <div class="mb-2">
+    <label class="form-label mb-0">s parameter bounds</label>
+    <div class="d-flex gap-1">
+      <input type="number" id="s-s-lo" class="form-control form-control-sm" style="width:90px" value="0">
+      <span class="align-self-center">to</span>
+      <input type="number" id="s-s-hi" class="form-control form-control-sm" style="width:90px">
+    </div>
+  </div>
+
+  <div class="section-label">Knob step sizes</div>
+  <div class="row g-1">
+    <div class="col">
+      <label class="form-label mb-0">Position (µm)</label>
+      <input type="number" id="s-step-pos" class="form-control form-control-sm" value="1" step="0.1" min="0.01">
+    </div>
+    <div class="col">
+      <label class="form-label mb-0">Orientation (°)</label>
+      <input type="number" id="s-step-ori" class="form-control form-control-sm" value="1" step="0.5" min="0.1">
+    </div>
+    <div class="col">
+      <label class="form-label mb-0">Frequency (MHz)</label>
+      <input type="number" id="s-step-freq" class="form-control form-control-sm" value="0.05" step="0.01" min="0.001">
+    </div>
+  </div>
+</div>
+<div class="col-md-6">
+  <div class="section-label">Reference direction (ref_dir)</div>
+  <div class="d-flex gap-1 mb-2">
+    <input type="number" id="s-ref-x" class="form-control form-control-sm" style="width:70px" value="0" step="0.1">
+    <input type="number" id="s-ref-y" class="form-control form-control-sm" style="width:70px" value="1" step="0.1">
+    <input type="number" id="s-ref-z" class="form-control form-control-sm" style="width:70px" value="0" step="0.1">
+    <span class="align-self-center text-muted small">(x,y,z)</span>
+  </div>
+
+  <div class="section-label">RF reference frequency</div>
+  <div class="d-flex gap-1 mb-2">
+    <input type="number" id="s-rf-freq" class="form-control form-control-sm" style="width:100px" value="43">
+    <span class="align-self-center">MHz</span>
+  </div>
+
+  <div class="section-label" id="s-rf-amp-section">s-Pinned: RF amplitude</div>
+  <div class="d-flex gap-1 mb-2">
+    <input type="number" id="s-rf-amp" class="form-control form-control-sm" style="width:100px" value="200">
+    <span class="align-self-center">V</span>
+    <span class="align-self-center text-muted small" id="s-fixed-display"></span>
+  </div>
+
+  <div class="section-label">Validation</div>
+  <button class="btn btn-sm btn-outline-info" id="btn-validate">Run self-test</button>
+  <pre id="validate-out" class="mt-2" style="font-size:0.75rem;max-height:150px;overflow:auto"></pre>
+</div>
+</div>
+</div><!-- /tab-settings -->
+</div><!-- /tab-content -->
+</div><!-- /container -->
+
+<script src="bundles.js" onerror="console.warn('bundles.js not found — run export_bundles.py first')"></script>
+<script>
+'use strict';
+// ============================================================
+// SECTION 1: DENSE MATRIX UTILITIES
+// All matrices stored as 2D arrays (array of rows) or flat Float64Arrays.
+// ============================================================
+
+function zeros2d(m, n) {
+  const A = [];
+  for (let i = 0; i < m; i++) A.push(new Array(n).fill(0.0));
+  return A;
+}
+
+function matVec(A, x) {
+  // A: 2D array m×n, x: array n → y: array m
+  const m = A.length, n = A[0].length;
+  const y = new Array(m).fill(0.0);
+  for (let i = 0; i < m; i++)
+    for (let j = 0; j < n; j++) y[i] += A[i][j] * x[j];
+  return y;
+}
+
+function matMul(A, B) {
+  // A: m×k, B: k×n → C: m×n (2D arrays)
+  const m = A.length, k = A[0].length, n = B[0].length;
+  const C = zeros2d(m, n);
+  for (let i = 0; i < m; i++)
+    for (let j = 0; j < n; j++)
+      for (let l = 0; l < k; l++) C[i][j] += A[i][l] * B[l][j];
+  return C;
+}
+
+function transpose(A) {
+  const m = A.length, n = A[0].length;
+  const T = zeros2d(n, m);
+  for (let i = 0; i < m; i++)
+    for (let j = 0; j < n; j++) T[j][i] = A[i][j];
+  return T;
+}
+
+function dot(a, b) {
+  let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s;
+}
+
+function vecAdd(a, b) { return a.map((v, i) => v + b[i]); }
+function vecSub(a, b) { return a.map((v, i) => v - b[i]); }
+function vecScale(a, s) { return a.map(v => v * s); }
+function norm2(a) { return Math.sqrt(dot(a, a)); }
+
+// Gaussian elimination with partial pivoting for small systems
+function gaussSolve(A_in, b_in) {
+  const n = b_in.length;
+  // Copy
+  const A = A_in.map(row => row.slice());
+  const b = b_in.slice();
+  for (let col = 0; col < n; col++) {
+    // Find pivot
+    let pivot = col;
+    for (let row = col + 1; row < n; row++)
+      if (Math.abs(A[row][col]) > Math.abs(A[pivot][col])) pivot = row;
+    [A[col], A[pivot]] = [A[pivot], A[col]];
+    [b[col], b[pivot]] = [b[pivot], b[col]];
+    const d = A[col][col];
+    if (Math.abs(d) < 1e-14) return null; // singular
+    for (let row = col + 1; row < n; row++) {
+      const f = A[row][col] / d;
+      for (let c = col; c < n; c++) A[row][c] -= f * A[col][c];
+      b[row] -= f * b[col];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = b[i];
+    for (let j = i + 1; j < n; j++) s -= A[i][j] * x[j];
+    x[i] = s / A[i][i];
+  }
+  return x;
+}
+
+// SVD-based pseudoinverse solve: x = M^+ b
+// Works for any m×n (including m < n by transposing — numeric.js requires rows >= cols).
+function svdSolve(M_2d, b_arr) {
+  const m = M_2d.length, n = M_2d[0].length;
+  const TOL = 1e-12;
+
+  if (m >= n) {
+    // Standard path
+    const { U, S, V } = numeric.svd(M_2d);
+    const smax = S[0] || 1.0;
+    const tol = TOL * smax;
+    const Ut_b = new Array(S.length).fill(0.0);
+    for (let i = 0; i < S.length; i++)
+      for (let r = 0; r < m; r++) Ut_b[i] += U[r][i] * b_arr[r];
+    const x = new Array(n).fill(0.0);
+    for (let i = 0; i < S.length; i++) {
+      if (S[i] < tol) continue;
+      const c = Ut_b[i] / S[i];
+      for (let j = 0; j < n; j++) x[j] += V[j][i] * c;
+    }
+    return x;
+  } else {
+    // m < n: SVD of M^T (n×m), then M^+ = U' * diag(1/S') * V'^T
+    // where M^T = U' S' V'^T  →  M = V' S'^T U'^T
+    // M^+ b = U' diag(1/S') V'^T b
+    const Mt = transpose(M_2d);  // n × m
+    const { U, S, V } = numeric.svd(Mt);  // U: n×k, S: k, V: m×k
+    const smax = S[0] || 1.0;
+    const tol = TOL * smax;
+    // Vt_b[i] = V[:,i] · b  (V is m×k)
+    const Vt_b = new Array(S.length).fill(0.0);
+    for (let i = 0; i < S.length; i++)
+      for (let r = 0; r < m; r++) Vt_b[i] += V[r][i] * b_arr[r];
+    const x = new Array(n).fill(0.0);
+    for (let i = 0; i < S.length; i++) {
+      if (S[i] < tol) continue;
+      const c = Vt_b[i] / S[i];
+      for (let j = 0; j < n; j++) x[j] += U[j][i] * c;  // U is n×k
+    }
+    return x;
+  }
+}
+
+// ============================================================
+// SECTION 2: PHYSICS PIPELINE  (matches Python exactly)
+// ============================================================
+
+function rotationFromAxisRefAlpha(principal_axis, ref_dir, alpha_deg) {
+  // Returns R as 2D array 3×3 (column-major: R[col][row] or R as rows of transposed?)
+  // We'll store as row-major: R[row][col], so R[i] = [e1[i], e2[i], e3[i]]
+  // i.e. the COLUMNS of R are e1, e2, e3.
+  // Access: column j of R = [R[0][j], R[1][j], R[2][j]]
+
+  const na = norm2(principal_axis);
+  if (na < 1e-14) throw new Error('principal_axis is zero');
+  const e1 = vecScale(principal_axis, 1.0 / na);
+
+  // r_perp = ref_dir - (ref_dir . e1) e1
+  const d = dot(ref_dir, e1);
+  const r_perp = vecSub(ref_dir, vecScale(e1, d));
+  const nr = norm2(r_perp);
+  if (nr < 1e-12) throw new Error('ref_dir nearly parallel to principal_axis');
+  const e2_0 = vecScale(r_perp, 1.0 / nr);
+  const e3_0 = cross3(e1, e2_0);
+
+  const alpha_rad = (alpha_deg % 360.0) * Math.PI / 180.0;
+  const ca = Math.cos(alpha_rad), sa = Math.sin(alpha_rad);
+  const e2 = vecAdd(vecScale(e2_0, ca), vecScale(e3_0, sa));
+  let e3 = cross3(e1, e2);
+  const ne3 = norm2(e3);
+  if (ne3 > 1e-14) e3 = vecScale(e3, 1.0 / ne3);
+
+  // R rows: R[row][col] = e_col[row]
+  const R = [[e1[0], e2[0], e3[0]],
+             [e1[1], e2[1], e3[1]],
+             [e1[2], e2[2], e3[2]]];
+  return R;
+}
+
+function cross3(a, b) {
+  return [a[1]*b[2] - a[2]*b[1],
+          a[2]*b[0] - a[0]*b[2],
+          a[0]*b[1] - a[1]*b[0]];
+}
+
+function buildDerivativeRows(powers, r_eval) {
+  // powers: array of [px,py,pz], r_eval: [x0,y0,z0]
+  // Returns {dx, dy, dz}: arrays of length M
+  const M = powers.length;
+  const x0 = r_eval[0], y0 = r_eval[1], z0 = r_eval[2];
+  const dx = new Array(M).fill(0.0);
+  const dy = new Array(M).fill(0.0);
+  const dz = new Array(M).fill(0.0);
+  for (let j = 0; j < M; j++) {
+    const [px, py, pz] = powers[j];
+    if (px >= 1) dx[j] = px * Math.pow(x0, px-1) * Math.pow(y0, py) * Math.pow(z0, pz);
+    if (py >= 1) dy[j] = py * Math.pow(x0, px) * Math.pow(y0, py-1) * Math.pow(z0, pz);
+    if (pz >= 1) dz[j] = pz * Math.pow(x0, px) * Math.pow(y0, py) * Math.pow(z0, pz-1);
+  }
+  return { dx, dy, dz };
+}
+
+function buildHessianRows(powers, r_eval) {
+  const M = powers.length;
+  const x0 = r_eval[0], y0 = r_eval[1], z0 = r_eval[2];
+  const dxx = new Array(M).fill(0.0), dyy = new Array(M).fill(0.0),
+        dzz = new Array(M).fill(0.0), dxy = new Array(M).fill(0.0),
+        dxz = new Array(M).fill(0.0), dyz = new Array(M).fill(0.0);
+  for (let j = 0; j < M; j++) {
+    const [px, py, pz] = powers[j];
+    if (px >= 2) dxx[j] = px*(px-1)*Math.pow(x0,px-2)*Math.pow(y0,py)*Math.pow(z0,pz);
+    if (py >= 2) dyy[j] = py*(py-1)*Math.pow(x0,px)*Math.pow(y0,py-2)*Math.pow(z0,pz);
+    if (pz >= 2) dzz[j] = pz*(pz-1)*Math.pow(x0,px)*Math.pow(y0,py)*Math.pow(z0,pz-2);
+    if (px>=1&&py>=1) dxy[j] = px*py*Math.pow(x0,px-1)*Math.pow(y0,py-1)*Math.pow(z0,pz);
+    if (px>=1&&pz>=1) dxz[j] = px*pz*Math.pow(x0,px-1)*Math.pow(y0,py)*Math.pow(z0,pz-1);
+    if (py>=1&&pz>=1) dyz[j] = py*pz*Math.pow(x0,px)*Math.pow(y0,py-1)*Math.pow(z0,pz-1);
+  }
+  return { dxx, dyy, dzz, dxy, dxz, dyz };
+}
+
+function mat3x3symMul(R, diag3) {
+  // Compute R * diag(diag3) * R^T (3×3 result, stored as 2D row-major)
+  // R: 3×3 2D array, diag3: [d0,d1,d2]
+  const RD = zeros2d(3, 3);
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j < 3; j++) RD[i][j] = R[i][j] * diag3[j];
+  return matMul(RD, transpose(R));
+}
+
+function buildConstraintsForPhysics(physics, trap, ref_dir) {
+  // physics = {r_um:[3], theta, phi, alpha, f_MHz:[3]}
+  // Returns {M_2d: 2D array 9×n, b_arr: array(9)}
+  const A = trap.A;         // 2D array M_mon × n_controls
+  const powers = trap.powers;
+  const L0 = trap.ND_L0_M;
+  const mass = trap.ion_mass;
+  const charge = trap.ion_charge;
+  const M_mon = powers.length;
+  const n_controls = trap.n_controls;
+
+  const r_m = physics.r_um.map(v => v * 1e-6);
+  const r_eval = r_m.map(v => v / L0);
+
+  // principal axis from spherical angles
+  const th = physics.theta * Math.PI / 180.0;
+  const ph = physics.phi * Math.PI / 180.0;
+  const principal_axis = [Math.sin(th)*Math.cos(ph), Math.sin(th)*Math.sin(ph), Math.cos(th)];
+
+  const R = rotationFromAxisRefAlpha(principal_axis, ref_dir, physics.alpha);
+
+  // Kstar = (mass/charge) * R diag(omega²) R^T
+  const freqs_hz = physics.f_MHz.map(f => f * 1e6);
+  const omega2 = freqs_hz.map(f => (2*Math.PI*f)**2);
+  const Kstar = mat3x3symMul(R, omega2);
+  const mq = mass / charge;
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j < 3; j++) Kstar[i][j] *= mq;
+
+  // K_use = Kstar * L0^2
+  const L02 = L0 * L0;
+  const K_use = Kstar.map(row => row.map(v => v * L02));
+
+  // Build L (9 × M_mon)
+  const { dx, dy, dz } = buildDerivativeRows(powers, r_eval);
+  const { dxx, dyy, dzz, dxy, dxz, dyz } = buildHessianRows(powers, r_eval);
+
+  // L rows: [dx, dy, dz, dxx, dyy, dzz, dxy, dxz, dyz]
+  const hess_rows = [dxx, dyy, dzz, dxy, dxz, dyz];
+  const L_rows = [dx, dy, dz, ...hess_rows];  // 9 × M_mon
+
+  // b = [0,0,0, K_use[0,0], K_use[1,1], K_use[2,2], K_use[0,1], K_use[0,2], K_use[1,2]]
+  const b_arr = [0, 0, 0,
+    K_use[0][0], K_use[1][1], K_use[2][2],
+    K_use[0][1], K_use[0][2], K_use[1][2]];
+
+  // M = L @ A (9 × n_controls)
+  const M_2d = zeros2d(9, n_controls);
+  for (let i = 0; i < 9; i++)
+    for (let j = 0; j < n_controls; j++)
+      for (let k = 0; k < M_mon; k++) M_2d[i][j] += L_rows[i][k] * A[k][j];
+
+  return { M_2d, b_arr };
+}
+
+// ============================================================
+// SECTION 3: QP SOLVER
+// min 0.5 x^T diag(G_diag) x + f^T x  s.t. M x = b, lb <= x <= ub
+// G_diag: array(n), f: array(n), M: 2D array m×n
+// ============================================================
+
+function solveEqualitySubproblem(G_diag, f_obj, M, b_eq, lb, ub, status) {
+  // status[i] = -1 free, 0 at lb, 1 at ub
+  const n = G_diag.length, m = b_eq.length;
+  const free_idx = [];
+  for (let i = 0; i < n; i++) if (status[i] < 0) free_idx.push(i);
+  const nf = free_idx.length;
+
+  // Compute b_red = b_eq - M_W * x_W
+  const b_red = b_eq.slice();
+  for (let i = 0; i < n; i++) {
+    if (status[i] < 0) continue;
+    const xi = status[i] === 0 ? lb[i] : ub[i];
+    for (let k = 0; k < m; k++) b_red[k] -= M[k][i] * xi;
+  }
+
+  const x = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    if (status[i] === 0) x[i] = lb[i];
+    else if (status[i] === 1) x[i] = ub[i];
+  }
+
+  if (nf === 0) {
+    let resid = 0;
+    for (let k = 0; k < m; k++) {
+      let s = -b_eq[k]; for (let i = 0; i < n; i++) s += M[k][i] * x[i];
+      resid += s*s;
+    }
+    const lambda = new Array(m).fill(0);
+    return { feasible: Math.sqrt(resid) < 1e-7, x, lambda };
+  }
+
+  // Build Sigma = M_free G_free^{-1} M_free^T  (m×m)
+  // and rhs: Sigma * lambda = -(b_red + M_free G_free^{-1} f_free)
+  const Sigma = zeros2d(m, m);
+  const rhs = b_red.slice();
+  for (const fi of free_idx) {
+    const ig = 1.0 / G_diag[fi];
+    for (let k = 0; k < m; k++) {
+      const Mkfi = M[k][fi];
+      if (Mkfi === 0) continue;
+      for (let l = 0; l < m; l++) Sigma[k][l] += Mkfi * M[l][fi] * ig;
+      rhs[k] += Mkfi * f_obj[fi] * ig;
+    }
+  }
+  for (let k = 0; k < m; k++) rhs[k] = -rhs[k];
+
+  // Solve Sigma * lambda = rhs  (m×m system, m<=9)
+  let lambda = gaussSolve(Sigma, rhs);
+  if (!lambda) {
+    // Singular: use SVD-based solve
+    lambda = svdSolve(Sigma, rhs);
+    // Check residual
+    const resLam = matVec(Sigma, lambda);
+    const lamErr = norm2(vecSub(resLam, rhs));
+    if (lamErr > 1e-5 * (norm2(rhs) + 1)) {
+      return { feasible: false, x: null, lambda: null };
+    }
+  }
+  if (lambda.some(v => !isFinite(v))) return { feasible: false, x: null, lambda: null };
+
+  // Compute x_free
+  for (const fi of free_idx) {
+    let MTlam = 0;
+    for (let k = 0; k < m; k++) MTlam += M[k][fi] * lambda[k];
+    x[fi] = -(f_obj[fi] + MTlam) / G_diag[fi];
+  }
+
+  // Verify equality residual
+  const Mx = matVec(M, Array.from(x));
+  const resid = norm2(vecSub(Mx, b_eq));
+  if (resid > 1e-6 * (norm2(b_eq) + 1)) {
+    return { feasible: false, x: null, lambda: null };
+  }
+
+  return { feasible: true, x, lambda };
+}
+
+function solveBoxEqQP(G_diag, f_obj, M, b_eq, lb, ub) {
+  // Returns {x: Float64Array, feasible, unboundedFeasible, residual}
+  const n = G_diag.length, m = b_eq.length;
+
+  // Check if equality constraints are satisfiable (unbounded)
+  const x_eq = svdSolve(M, b_eq);
+  const Mx_eq = matVec(M, x_eq);
+  const eq_resid = norm2(vecSub(Mx_eq, b_eq));
+  const eq_tol = 1e-8 * (norm2(b_eq) + 1);
+  if (eq_resid > eq_tol) {
+    return { x: Float64Array.from(x_eq), feasible: false, unboundedFeasible: false, residual: eq_resid };
+  }
+
+  // Initial active set: fix variables that are out of bounds in x_eq
+  const status = new Int8Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    if (x_eq[i] < lb[i] - 1e-8) status[i] = 0;
+    else if (x_eq[i] > ub[i] + 1e-8) status[i] = 1;
+  }
+
+  const MAX_ITER = 4 * n + 20;
+  let last_x = null;
+
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const sub = solveEqualitySubproblem(G_diag, f_obj, M, b_eq, lb, ub, status);
+    if (!sub.feasible || sub.x === null) {
+      return { x: Float64Array.from(x_eq), feasible: false, unboundedFeasible: true, residual: eq_resid };
+    }
+    const x = sub.x;
+    last_x = x;
+
+    // Check if any free variable is out of bounds
+    let worst = 1e-8, pivot = -1, pivot_dir = 0;
+    for (let i = 0; i < n; i++) {
+      if (status[i] >= 0) continue;
+      if (lb[i] - x[i] > worst) { worst = lb[i] - x[i]; pivot = i; pivot_dir = 0; }
+      if (x[i] - ub[i] > worst) { worst = x[i] - ub[i]; pivot = i; pivot_dir = 1; }
+    }
+    if (pivot >= 0) {
+      status[pivot] = pivot_dir;
+      continue;
+    }
+
+    // All free variables in-bounds → check KKT
+    const lambda = sub.lambda;
+    let wKKT = 1e-8, release = -1;
+    for (let i = 0; i < n; i++) {
+      if (status[i] < 0) continue;
+      let MTl = 0;
+      for (let k = 0; k < m; k++) MTl += M[k][i] * lambda[k];
+      const grad = G_diag[i] * x[i] + f_obj[i] + MTl;
+      // lb: grad should be >= 0; ub: grad should be <= 0
+      if (status[i] === 0 && grad < -wKKT) { wKKT = -grad; release = i; }
+      if (status[i] === 1 && grad >  wKKT) { wKKT =  grad; release = i; }
+    }
+    if (release < 0) {
+      // Optimal!
+      const in_bounds = Array.from(x).every((v, i) => v >= lb[i] - 1e-6 && v <= ub[i] + 1e-6);
+      return { x, feasible: in_bounds, unboundedFeasible: true, residual: 0 };
+    }
+    status[release] = -1;
+  }
+
+  // Max iterations: return best effort
+  const xf = last_x || Float64Array.from(x_eq);
+  const in_bounds = Array.from(xf).every((v, i) => v >= lb[i] - 1e-6 && v <= ub[i] + 1e-6);
+  return { x: xf, feasible: in_bounds, unboundedFeasible: true, residual: 0 };
+}
+
+// Unconstrained equality-constrained weighted-norm solve (for override & full-target)
+// v = v0 + P^{-1} M^T (M P^{-1} M^T)^{-1} (b - M v0),  P = W^2 = diag(G_diag)
+function solveOverrideAnalytic(G_diag, f_obj, M, b_eq, v0_arr) {
+  const n = G_diag.length, m = b_eq.length;
+  // P_inv = diag(1/G_diag)
+  // MP_inv M^T  (m×m)
+  const S = zeros2d(m, m);
+  for (let k = 0; k < m; k++)
+    for (let l = 0; l < m; l++)
+      for (let j = 0; j < n; j++) S[k][l] += M[k][j] * M[l][j] / G_diag[j];
+  // b - M v0
+  const Mv0 = matVec(M, v0_arr);
+  const rhs = vecSub(b_eq, Mv0);
+  // Solve S * mu = rhs
+  let mu = gaussSolve(S, rhs);
+  if (!mu) mu = svdSolve(S, rhs);
+  // v = v0 + P_inv M^T mu
+  const x = v0_arr.slice();
+  for (let j = 0; j < n; j++) {
+    let MTmu = 0;
+    for (let k = 0; k < m; k++) MTmu += M[k][j] * mu[k];
+    x[j] += MTmu / G_diag[j];
+  }
+  return Float64Array.from(x);
+}
+
+// ============================================================
+// SECTION 4: APP STATE & SOLVE MODES
+// ============================================================
+
+const DEFAULTS = {
+  r_um: [0, 0, 0],
+  theta: 90, phi: 0, alpha: 0,
+  f_MHz: [0.2, 1.0, 1.0],
+  ref_dir: [0, 1, 0],
+  rf_freq_mhz: 43,
+  rf_amp_v: 200,
+  step_pos: 1, step_ori: 1, step_freq: 0.05,
+  dc_lo: -500, dc_hi: 500,
+  rfdc_lo: -50, rfdc_hi: 50,
+  s_lo: 0,
+};
+
+let appState = {
+  trap: null,       // trap bundle object
+  trapKey: null,
+  physics: null,    // {r_um, theta, phi, alpha, f_MHz}
+  v: null,          // Float64Array
+  lastFeasible: null, // {physics, v}
+  sFree: true,
+  settings: {
+    ref_dir: [0,1,0], rf_freq_mhz: 43, rf_amp_v: 200,
+    step_pos: 1, step_ori: 1, step_freq: 0.05,
+    dc_lo: -500, dc_hi: 500, rfdc_lo: -50, rfdc_hi: 50, s_lo: 0
+  },
+  infeasible: false,
+};
+
+function getTrapBounds(trap, settings) {
+  const n = trap.n_controls;
+  const n_dc = trap.dc_electrodes.length;
+  const n_rf = trap.rf_dc_electrodes.length;
+  const lb = new Float64Array(n);
+  const ub = new Float64Array(n);
+  // Use the bundle's max as the ceiling so traps with high-s requirements work
+  const bundleSMax = trap.default_s_bounds ? trap.default_s_bounds[1] : trap.RF_S_MAX_DEFAULT;
+  const sHi = parseFloat(document.getElementById('s-s-hi').value) || bundleSMax;
+  for (let i = 0; i < n_dc; i++) { lb[i] = settings.dc_lo; ub[i] = settings.dc_hi; }
+  for (let i = 0; i < n_rf; i++) { lb[n_dc+i] = settings.rfdc_lo; ub[n_dc+i] = settings.rfdc_hi; }
+  lb[n-1] = settings.s_lo; ub[n-1] = sHi;
+  return { lb, ub };
+}
+
+function getWeights(trap) {
+  // W = diag(1,...,1, W_S);  G_diag = W^2
+  const n = trap.n_controls;
+  const W_S = trap.app_w_s || 10.0;
+  const G = new Float64Array(n).fill(1.0);
+  G[n-1] = W_S * W_S;
+  return G;
+}
+
+function physicsToControlTarget(physics, trap, settings, v_current, sFree, sFixed) {
+  // Returns {M_2d, b_arr, G_diag, f_knob, f_full, lb, ub, s_col_removed}
+  const { M_2d, b_arr } = buildConstraintsForPhysics(physics, trap, settings.ref_dir);
+  const G_diag = getWeights(trap);
+  const { lb, ub } = getTrapBounds(trap, settings);
+  const n = trap.n_controls;
+
+  if (!sFree && sFixed !== null) {
+    // s-pinned: remove last column, adjust b
+    const b_red = b_arr.slice();
+    const M_red = M_2d.map(row => row.slice(0, n-1));
+    for (let k = 0; k < 9; k++) b_red[k] -= M_2d[k][n-1] * sFixed;
+    const G_red = G_diag.slice(0, n-1);
+    const lb_red = lb.slice(0, n-1);
+    const ub_red = ub.slice(0, n-1);
+    return { M_2d: M_red, b_arr: b_red, G_diag: G_red, lb: lb_red, ub: ub_red, sFixed, n_eff: n-1 };
+  }
+  return { M_2d, b_arr, G_diag, lb, ub, sFixed: null, n_eff: n };
+}
+
+function reassembleV(v_red, sFixed, n) {
+  if (sFixed === null) return v_red;
+  const v = new Float64Array(n);
+  for (let i = 0; i < n-1; i++) v[i] = v_red[i];
+  v[n-1] = sFixed;
+  return v;
+}
+
+function getSFixed(settings, trap) {
+  if (appState.sFree) return null;
+  const omega_mhz = 2 * Math.PI * settings.rf_freq_mhz;
+  return (settings.rf_amp_v * settings.rf_amp_v) / (omega_mhz * omega_mhz);
+}
+
+function solveKnob(physics) {
+  const trap = appState.trap;
+  const settings = appState.settings;
+  const n = trap.n_controls;
+  const sFixed = getSFixed(settings, trap);
+  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff } = physicsToControlTarget(
+    physics, trap, settings, appState.v, appState.sFree, sFixed);
+
+  const v0 = sF !== null ? Array.from(appState.v).slice(0, n-1) : Array.from(appState.v);
+  // Knob objective: min ||W(v - v0)||^2 => f = -G_diag * v0
+  const f_knob = G_diag.map((g, i) => -g * v0[i]);
+
+  const result = solveBoxEqQP(G_diag, f_knob, M_2d, b_arr, lb, ub);
+  const v_full = reassembleV(result.x, sF, n);
+  return { ...result, x: v_full };
+}
+
+function solveFullTarget(physics) {
+  const trap = appState.trap;
+  const settings = appState.settings;
+  const n = trap.n_controls;
+  const sFixed = getSFixed(settings, trap);
+  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff } = physicsToControlTarget(
+    physics, trap, settings, appState.v, appState.sFree, sFixed);
+
+  // Full-target objective: min ||W v||^2 => f = 0
+  const f_full = new Array(n_eff).fill(0.0);
+  const result = solveBoxEqQP(G_diag, f_full, M_2d, b_arr, lb, ub);
+  const v_full = reassembleV(result.x, sF, n);
+  return { ...result, x: v_full };
+}
+
+function solveOverride(physics, v_current) {
+  const trap = appState.trap;
+  const settings = appState.settings;
+  const n = trap.n_controls;
+  const sFixed = getSFixed(settings, trap);
+  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff } = physicsToControlTarget(
+    physics, trap, settings, v_current, appState.sFree, sFixed);
+
+  const v0 = sF !== null ? Array.from(v_current).slice(0, n-1) : Array.from(v_current);
+  const f = G_diag.map((g, i) => -g * v0[i]);
+  const v_red = solveOverrideAnalytic(G_diag, f, M_2d, b_arr, v0);
+  return reassembleV(v_red, sF, n);
+}
+
+function sToRfAmp(s, rf_freq_mhz) {
+  const omega_mhz = 2 * Math.PI * rf_freq_mhz;
+  return Math.sqrt(Math.max(s, 0)) * omega_mhz;
+}
+
+// ============================================================
+// SECTION 5: UI INTERACTION
+// ============================================================
+
+const PARAM_CONFIG = [
+  { id: 'knob-x',     param: 'r_um', idx: 0, label: 'x',  unit: 'µm',  min: -200, max: 200,  step_key: 'step_pos' },
+  { id: 'knob-y',     param: 'r_um', idx: 1, label: 'y',  unit: 'µm',  min: -50,  max: 50,   step_key: 'step_pos' },
+  { id: 'knob-z',     param: 'r_um', idx: 2, label: 'z',  unit: 'µm',  min: -50,  max: 50,   step_key: 'step_pos' },
+  { id: 'knob-theta', param: 'theta', idx: -1, label: 'θ', unit: '°',   min: 0.1,  max: 179.9, step_key: 'step_ori' },
+  { id: 'knob-phi',   param: 'phi',   idx: -1, label: 'φ', unit: '°',   min: 0,    max: 360,  step_key: 'step_ori' },
+  { id: 'knob-alpha', param: 'alpha', idx: -1, label: 'α', unit: '°',   min: 0,    max: 360,  step_key: 'step_ori' },
+  { id: 'knob-f1',    param: 'f_MHz', idx: 0, label: 'ω₁', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq' },
+  { id: 'knob-f2',    param: 'f_MHz', idx: 1, label: 'ω₂', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq' },
+  { id: 'knob-f3',    param: 'f_MHz', idx: 2, label: 'ω₃', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq' },
+];
+
+function buildKnobUI() {
+  PARAM_CONFIG.forEach(cfg => {
+    const el = document.getElementById(cfg.id);
+    if (!el) return;
+    el.innerHTML = `
+      <span class="knob-label">${cfg.label}</span>
+      <button class="btn btn-sm btn-outline-secondary btn-pm" data-id="${cfg.id}" data-dir="-1">−</button>
+      <input type="range" class="form-range knob-slider" id="${cfg.id}-slider"
+        min="${cfg.min}" max="${cfg.max}" step="0.001" value="0">
+      <button class="btn btn-sm btn-outline-secondary btn-pm" data-id="${cfg.id}" data-dir="1">+</button>
+      <span class="knob-val" id="${cfg.id}-val">0.000</span>
+      <span class="knob-unit">${cfg.unit}</span>
+    `;
+  });
+
+  // Full-target inputs
+  const ftContainer = document.getElementById('full-target-inputs');
+  PARAM_CONFIG.forEach(cfg => {
+    const col = document.createElement('div');
+    col.className = 'col-4';
+    col.innerHTML = `<label class="form-label mb-0 small">${cfg.label} (${cfg.unit})</label>
+      <input type="number" class="form-control form-control-sm full-target-input"
+        id="ft-${cfg.id}" step="${cfg.step_key === 'step_freq' ? 0.01 : 0.1}">`;
+    ftContainer.appendChild(col);
+  });
+}
+
+function getParamValue(cfg) {
+  const p = appState.physics;
+  if (cfg.idx >= 0) return p[cfg.param][cfg.idx];
+  return p[cfg.param];
+}
+
+function setParamValue(cfg, val) {
+  const p = appState.physics;
+  if (cfg.idx >= 0) p[cfg.param][cfg.idx] = val;
+  else p[cfg.param] = val;
+}
+
+function syncKnobsToPhysics() {
+  PARAM_CONFIG.forEach(cfg => {
+    const v = getParamValue(cfg);
+    const slider = document.getElementById(`${cfg.id}-slider`);
+    const valEl = document.getElementById(`${cfg.id}-val`);
+    if (slider) slider.value = v;
+    if (valEl) valEl.textContent = v.toFixed(3);
+    const ftInput = document.getElementById(`ft-${cfg.id}`);
+    if (ftInput) ftInput.value = v.toFixed(4);
+  });
+}
+
+function handleKnobChange(newPhysics, mode = 'knob') {
+  // mode: 'knob' | 'full_target' | 'reset'
+  const trap = appState.trap;
+  if (!trap) return;
+
+  let result, v_new;
+
+  if (mode === 'full_target' || mode === 'reset') {
+    const res = solveFullTarget(newPhysics);
+    result = res;
+    v_new = res.x;
+  } else {
+    const res = solveKnob(newPhysics);
+    result = res;
+    v_new = res.x;
+  }
+
+  const override = document.getElementById('override-check').checked;
+
+  if (result.feasible) {
+    appState.v = v_new;
+    appState.physics = deepCopyPhysics(newPhysics);
+    appState.lastFeasible = { physics: deepCopyPhysics(newPhysics), v: new Float64Array(v_new) };
+    appState.infeasible = false;
+    hideInfeasBox();
+  } else {
+    const mode2 = result.unboundedFeasible ? 'bounds' : 'unreachable';
+    if (override) {
+      // Use override (unconstrained) solve
+      v_new = solveOverride(newPhysics, appState.v);
+      appState.v = v_new;
+      appState.physics = deepCopyPhysics(newPhysics);
+      // Do NOT update lastFeasible
+      appState.infeasible = true;
+      showInfeasBox(mode2, true);
+    } else {
+      // Revert
+      if (appState.lastFeasible) {
+        appState.physics = deepCopyPhysics(appState.lastFeasible.physics);
+        appState.v = new Float64Array(appState.lastFeasible.v);
+      }
+      appState.infeasible = true;
+      showInfeasBox(mode2, false);
+    }
+  }
+
+  syncKnobsToPhysics();
+  checkPositionBox();
+  updateDisplay();
+}
+
+function deepCopyPhysics(p) {
+  return {
+    r_um: [...p.r_um], theta: p.theta, phi: p.phi, alpha: p.alpha, f_MHz: [...p.f_MHz]
+  };
+}
+
+function showInfeasBox(mode, overridden) {
+  const box = document.getElementById('infeas-box');
+  const msg = document.getElementById('infeas-msg');
+  box.classList.add('active');
+  if (mode === 'unreachable')
+    msg.textContent = '⚠ Physics unreachable (rank-deficient M)';
+  else
+    msg.textContent = overridden ? '⚠ Out of bounds (override active)' : '⚠ Infeasible: out of voltage bounds — reverted';
+}
+
+function hideInfeasBox() {
+  document.getElementById('infeas-box').classList.remove('active');
+}
+
+function checkPositionBox() {
+  if (!appState.trap) return;
+  const fb = appState.trap.fit_box_um;
+  const r = appState.physics.r_um;
+  const out = Math.abs(r[0]) > fb.x || Math.abs(r[1]) > fb.y || Math.abs(r[2]) > fb.z;
+  document.getElementById('pos-warn').classList.toggle('active', out);
+}
+
+// Knob ± buttons
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-pm');
+  if (!btn) return;
+  const cfgId = btn.dataset.id;
+  const dir = parseFloat(btn.dataset.dir);
+  const cfg = PARAM_CONFIG.find(c => c.id === cfgId);
+  if (!cfg) return;
+
+  const step = appState.settings[cfg.step_key];
+  const cur = getParamValue(cfg);
+  const nval = cur + dir * step;
+  const clamped = Math.max(cfg.min, Math.min(cfg.max, nval));
+
+  const newPhys = deepCopyPhysics(appState.physics);
+  if (cfg.idx >= 0) newPhys[cfg.param][cfg.idx] = clamped;
+  else newPhys[cfg.param] = clamped;
+  handleKnobChange(newPhys, 'knob');
+});
+
+// Slider input — delegated so it works after buildKnobUI creates the elements
+document.addEventListener('input', (e) => {
+  const slider = e.target.closest('.knob-slider');
+  if (!slider) return;
+  const cfgId = slider.id.replace('-slider', '');
+  const cfg = PARAM_CONFIG.find(c => c.id === cfgId);
+  if (!cfg) return;
+  const val = parseFloat(slider.value);
+  const newPhys = deepCopyPhysics(appState.physics);
+  if (cfg.idx >= 0) newPhys[cfg.param][cfg.idx] = val;
+  else newPhys[cfg.param] = val;
+  handleKnobChange(newPhys, 'knob');
+});
+
+// Solve-target button
+document.getElementById('btn-solve-target').addEventListener('click', () => {
+  const newPhys = deepCopyPhysics(appState.physics);
+  PARAM_CONFIG.forEach(cfg => {
+    const v = parseFloat(document.getElementById(`ft-${cfg.id}`).value);
+    if (isNaN(v)) return;
+    if (cfg.idx >= 0) newPhys[cfg.param][cfg.idx] = v;
+    else newPhys[cfg.param] = v;
+  });
+  handleKnobChange(newPhys, 'full_target');
+});
+
+// Reset voltages
+document.getElementById('btn-reset-v').addEventListener('click', () => {
+  handleKnobChange(deepCopyPhysics(appState.physics), 'reset');
+});
+
+// Trap selector
+document.getElementById('trap-select').addEventListener('change', (e) => {
+  loadTrap(e.target.value);
+});
+
+// s mode toggle
+document.getElementById('s-free').addEventListener('change', () => {
+  appState.sFree = true;
+  handleKnobChange(deepCopyPhysics(appState.physics), 'reset');
+});
+document.getElementById('s-pinned').addEventListener('change', () => {
+  appState.sFree = false;
+  updateSFixed();
+  handleKnobChange(deepCopyPhysics(appState.physics), 'reset');
+});
+
+// Settings listeners
+['s-dc-lo','s-dc-hi','s-rfdc-lo','s-rfdc-hi','s-s-lo','s-s-hi',
+ 's-step-pos','s-step-ori','s-step-freq',
+ 's-ref-x','s-ref-y','s-ref-z','s-rf-freq','s-rf-amp'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', onSettingsChange);
+});
+
+function onSettingsChange() {
+  readSettings();
+  updateSFixed();
+  handleKnobChange(deepCopyPhysics(appState.physics), 'reset');
+}
+
+function readSettings() {
+  const s = appState.settings;
+  s.dc_lo  = parseFloat(document.getElementById('s-dc-lo').value)   || -500;
+  s.dc_hi  = parseFloat(document.getElementById('s-dc-hi').value)   ||  500;
+  s.rfdc_lo= parseFloat(document.getElementById('s-rfdc-lo').value) ||  -50;
+  s.rfdc_hi= parseFloat(document.getElementById('s-rfdc-hi').value) ||   50;
+  s.s_lo   = parseFloat(document.getElementById('s-s-lo').value)    ||    0;
+  s.step_pos = parseFloat(document.getElementById('s-step-pos').value) || 1;
+  s.step_ori = parseFloat(document.getElementById('s-step-ori').value) || 1;
+  s.step_freq= parseFloat(document.getElementById('s-step-freq').value)|| 0.05;
+  s.ref_dir = [
+    parseFloat(document.getElementById('s-ref-x').value) || 0,
+    parseFloat(document.getElementById('s-ref-y').value) || 1,
+    parseFloat(document.getElementById('s-ref-z').value) || 0,
+  ];
+  s.rf_freq_mhz = parseFloat(document.getElementById('s-rf-freq').value) || 43;
+  s.rf_amp_v    = parseFloat(document.getElementById('s-rf-amp').value)  || 200;
+  // Update sliders to match new step sizes
+  PARAM_CONFIG.forEach(cfg => {
+    const sl = document.getElementById(`${cfg.id}-slider`);
+    if (sl) sl.step = s[cfg.step_key];
+  });
+}
+
+function updateSFixed() {
+  const s = appState.settings;
+  const omega_mhz = 2 * Math.PI * s.rf_freq_mhz;
+  const s_fixed = (s.rf_amp_v * s.rf_amp_v) / (omega_mhz * omega_mhz);
+  document.getElementById('s-fixed-display').textContent =
+    `s = ${s_fixed.toFixed(4)}`;
+}
+
+// ============================================================
+// SECTION 6: DISPLAY UPDATES
+// ============================================================
+
+function updateDisplay() {
+  if (!appState.trap || !appState.v) return;
+  updateVoltageTable();
+  updateVoltageChart();
+  update3DView();
+  updateRFDisplay();
+  updatePhysicsDisplay();
+}
+
+function updateVoltageTable() {
+  const trap = appState.trap;
+  const v = appState.v;
+  const { lb, ub } = getTrapBounds(trap, appState.settings);
+  const tbody = document.querySelector('#volt-table tbody');
+  tbody.innerHTML = '';
+  const names = trap.control_names;
+  for (let i = 0; i < trap.n_controls; i++) {
+    const val = v[i];
+    const lo = lb[i], hi = ub[i];
+    const oos = val < lo - 1e-4 || val > hi + 1e-4;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${names[i]}</td>
+      <td class="${oos ? 'out-of-bounds' : ''}">${val.toFixed(4)}</td>
+      <td>${lo.toFixed(1)}</td><td>${hi.toFixed(1)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function updateVoltageChart() {
+  const trap = appState.trap;
+  const v = appState.v;
+  const { lb, ub } = getTrapBounds(trap, appState.settings);
+  const names = trap.control_names;
+  const colors = Array.from(v).map((val, i) =>
+    (val < lb[i]-1e-4 || val > ub[i]+1e-4) ? '#dc3545' : '#0d6efd');
+
+  const trace = {
+    type: 'bar', x: names, y: Array.from(v),
+    marker: { color: colors }, name: 'Voltage'
+  };
+  const lo_trace = {
+    type: 'scatter', mode: 'markers', x: names,
+    y: Array.from(lb), marker: { symbol: 'line-ew', size: 8, color: '#888',
+      line: { color: '#888', width: 2 } }, name: 'LB', showlegend: false
+  };
+  const hi_trace = {
+    type: 'scatter', mode: 'markers', x: names,
+    y: Array.from(ub), marker: { symbol: 'line-ew', size: 8, color: '#888',
+      line: { color: '#888', width: 2 } }, name: 'UB', showlegend: false
+  };
+  Plotly.react('chart-volt', [trace, lo_trace, hi_trace], {
+    margin: { t: 10, b: 60, l: 50, r: 10 }, height: 200,
+    yaxis: { title: 'V' }, xaxis: { tickfont: { size: 9 } }
+  }, { responsive: true, displayModeBar: false });
+}
+
+function update3DView() {
+  const p = appState.physics;
+  const th = p.theta * Math.PI / 180, ph = p.phi * Math.PI / 180;
+  const principal_axis = [Math.sin(th)*Math.cos(ph), Math.sin(th)*Math.sin(ph), Math.cos(th)];
+  let R;
+  try {
+    R = rotationFromAxisRefAlpha(principal_axis, appState.settings.ref_dir, p.alpha);
+  } catch(e) { return; }
+
+  const [ox, oy, oz] = p.r_um;
+  const scale = 15; // µm scaling for arrows
+  const axes_colors = ['#d9534f', '#5cb85c', '#0275d8'];
+  const traces = [];
+
+  // Ion position
+  traces.push({
+    type: 'scatter3d', mode: 'markers',
+    x: [ox], y: [oy], z: [oz],
+    marker: { size: 6, color: '#ff8800' }, name: 'Ion'
+  });
+
+  // Principal axes (arrows: e1, e2, e3 scaled by frequency)
+  for (let col = 0; col < 3; col++) {
+    const f = p.f_MHz[col];
+    const s = scale * (f / 1.0); // scale by frequency
+    const ex = R[0][col], ey = R[1][col], ez = R[2][col];
+    traces.push({
+      type: 'scatter3d', mode: 'lines+markers',
+      x: [ox, ox + ex*s], y: [oy, oy + ey*s], z: [oz, oz + ez*s],
+      line: { color: axes_colors[col], width: 4 },
+      marker: { size: [0, 5], color: axes_colors[col] },
+      name: `ω${col+1}=${f.toFixed(2)} MHz`,
+    });
+  }
+
+  Plotly.react('chart-3d', traces, {
+    margin: { t: 20, b: 10, l: 10, r: 10 }, height: 320,
+    scene: {
+      xaxis: { title: 'x (µm)', range: [-120, 120] },
+      yaxis: { title: 'y (µm)', range: [-25, 25] },
+      zaxis: { title: 'z (µm)', range: [-25, 25] },
+      aspectmode: 'cube',
+    },
+    legend: { x: 0, y: 1, font: { size: 10 } }
+  }, { responsive: true, displayModeBar: false });
+}
+
+function updateRFDisplay() {
+  const trap = appState.trap;
+  const v = appState.v;
+  const s = v[trap.n_controls - 1];
+  const rf_freq = appState.settings.rf_freq_mhz;
+  const rf_amp = sToRfAmp(s, rf_freq);
+  document.getElementById('rf-display').innerHTML =
+    `<b>RF:</b> s = ${s.toFixed(5)} &nbsp; V<sub>rf</sub> = ${rf_amp.toFixed(2)} V &nbsp; @ ${rf_freq.toFixed(1)} MHz`;
+}
+
+function updatePhysicsDisplay() {
+  const p = appState.physics;
+  document.getElementById('phys-display').textContent =
+    `r = (${p.r_um.map(v=>v.toFixed(2)).join(', ')}) µm  |  ` +
+    `θ=${p.theta.toFixed(1)}° φ=${p.phi.toFixed(1)}° α=${p.alpha.toFixed(1)}°  |  ` +
+    `ω = (${p.f_MHz.map(f=>f.toFixed(3)).join(', ')}) MHz`;
+}
+
+// ============================================================
+// SECTION 7: TRAP LOADING
+// ============================================================
+
+function loadTrap(key) {
+  if (!window.TRAP_BUNDLES || !window.TRAP_BUNDLES[key]) {
+    document.getElementById('solve-status-display').textContent =
+      `Error: trap bundle "${key}" not found. Run export_bundles.py.`;
+    return;
+  }
+  const bundle = window.TRAP_BUNDLES[key];
+  appState.trap = bundle;
+  appState.trapKey = key;
+
+  // Update s-hi bound — use exported s_max (supports traps that need high RF amplitude)
+  const s_hi = bundle.default_s_bounds[1];
+  document.getElementById('s-s-hi').value = s_hi.toFixed(4);
+  appState.settings.rf_amp_v = bundle.rf_amp_max_v || 600;
+  document.getElementById('s-rf-amp').value = appState.settings.rf_amp_v;
+
+  // Initial physics
+  appState.physics = {
+    r_um: [0, 0, 0], theta: 90, phi: 0, alpha: 0, f_MHz: [0.2, 1.0, 1.0]
+  };
+
+  // Initial voltage: full-target solve
+  let res;
+  try { res = solveFullTarget(appState.physics); }
+  catch(e) { console.error('loadTrap solve error:', e); return; }
+  appState.v = res.x;
+  if (res.feasible) {
+    appState.lastFeasible = {
+      physics: deepCopyPhysics(appState.physics),
+      v: new Float64Array(res.x)
+    };
+    hideInfeasBox();
+  }
+
+  syncKnobsToPhysics();
+  checkPositionBox();
+  updateDisplay();
+  document.getElementById('solve-status-display').textContent =
+    `Loaded ${key} (n=${bundle.n_controls}, ${res.feasible ? 'ok' : 'infeasible'})`;
+}
+
+// ============================================================
+// SECTION 8: VALIDATION SELF-TEST
+// ============================================================
+
+document.getElementById('btn-validate').addEventListener('click', runValidation);
+
+function allClose(a, b, atol = 1e-7) {
+  for (let i = 0; i < a.length; i++) {
+    if (Math.abs((a[i]||0) - (b[i]||0)) > atol) return false;
+  }
+  return true;
+}
+
+function flattenM(M_2d) { return M_2d.flatMap(row => row); }
+
+function runValidation() {
+  const out = document.getElementById('validate-out');
+  out.textContent = 'Running...\n';
+  const bundles = window.TRAP_BUNDLES;
+  if (!bundles) { out.textContent = 'No bundles loaded.'; return; }
+
+  const saved_trap = appState.trap;
+  const saved_settings = JSON.parse(JSON.stringify(appState.settings));
+  let pass = 0, fail = 0;
+  const lines = [];
+
+  for (const [trapKey, bundle] of Object.entries(bundles)) {
+    lines.push(`\n=== ${trapKey} ===`);
+    for (const gt of bundle.golden_tests) {
+      const physics = {
+        r_um: gt.r_um,
+        theta: Math.acos(gt.principal_axis[2]) * 180 / Math.PI,
+        phi: Math.atan2(gt.principal_axis[1], gt.principal_axis[0]) * 180 / Math.PI,
+        alpha: gt.alpha_deg,
+        f_MHz: gt.freqs_hz.map(f => f / 1e6),
+      };
+      // Override ref_dir from golden test
+      const orig_ref = appState.settings.ref_dir;
+      appState.settings.ref_dir = gt.ref_dir;
+
+      const { M_2d, b_arr } = buildConstraintsForPhysics(physics, bundle, gt.ref_dir);
+
+      // Test 1: M and b match golden
+      const M_flat_js = flattenM(M_2d);
+      const M_flat_py = flattenM(gt.M);
+      const b_ok = allClose(b_arr, gt.b, 1e-8);
+      const M_ok = allClose(M_flat_js, M_flat_py, 1e-8);
+
+      if (b_ok && M_ok) {
+        lines.push(`  ✓ ${gt.label}: L,b,M match`);
+        pass++;
+      } else {
+        const bErr = Math.max(...b_arr.map((v,i) => Math.abs(v - gt.b[i])));
+        const mErr = Math.max(...M_flat_js.map((v,i) => Math.abs(v - M_flat_py[i])));
+        lines.push(`  ✗ ${gt.label}: b_err=${bErr.toExponential(2)} M_err=${mErr.toExponential(2)}`);
+        fail++;
+      }
+
+      // Test 2: QP solve matches golden u (if available)
+      if (gt.u_solved) {
+        appState.trap = bundle;
+        const G_diag = getWeights(bundle);
+        const { lb, ub } = getTrapBounds(bundle, appState.settings);
+        const f_zero = new Array(bundle.n_controls).fill(0.0);
+        const result = solveBoxEqQP(G_diag, f_zero, M_2d, b_arr, lb, ub);
+        const u_ok = result.feasible && allClose(Array.from(result.x), gt.u_solved, 1e-4);
+        if (u_ok) {
+          lines.push(`  ✓ ${gt.label}: QP solve matches golden u`);
+          pass++;
+        } else {
+          const uErr = result.x ? Math.max(...Array.from(result.x).map((v,i) => Math.abs(v - gt.u_solved[i]))) : 'infeasible';
+          lines.push(`  ✗ ${gt.label}: QP u_err=${typeof uErr==='number'?uErr.toExponential(2):uErr}`);
+          fail++;
+        }
+      }
+
+      appState.settings.ref_dir = orig_ref;
+    }
+  }
+
+  // Restore app state
+  appState.trap = saved_trap;
+  appState.settings = saved_settings;
+
+  lines.push(`\nTotal: ${pass} passed, ${fail} failed`);
+  out.textContent = lines.join('\n');
+  console.log(lines.join('\n'));
+}
+
+// ============================================================
+// SECTION 9: INITIALIZATION
+// ============================================================
+
+function init() {
+  buildKnobUI();
+  readSettings();
+  updateSFixed();
+
+  // Populate trap selector
+  const sel = document.getElementById('trap-select');
+  if (window.TRAP_BUNDLES) {
+    Object.keys(window.TRAP_BUNDLES).forEach(key => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = window.TRAP_BUNDLES[key].display_label;
+      if (key === 'InnTrapFine') opt.selected = true;
+      sel.appendChild(opt);
+    });
+    loadTrap(sel.value);
+    // Run self-test silently
+    setTimeout(() => {
+      runValidation();
+    }, 200);
+  } else {
+    document.getElementById('solve-status-display').textContent =
+      'No bundles loaded. Run: python export_bundles.py';
+  }
+}
+
+// Bootstrap tabs init
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(el => {
+  el.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show','active'));
+    el.classList.add('active');
+    const target = document.querySelector(el.getAttribute('href'));
+    if (target) target.classList.add('show','active');
+  });
+});
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
