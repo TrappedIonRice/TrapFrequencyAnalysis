@@ -29,8 +29,12 @@ body { font-size: 0.87rem; }
   letter-spacing: 0.05em; margin-bottom: 4px; margin-top: 10px; }
 .full-target-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
 .full-target-input { width: 80px; font-family: monospace; font-size: 0.82rem; }
-#chart-3d { height: 320px; }
+#chart-3d { height: 300px; }
+#chart-freq-bar { height: 300px; }
 #chart-volt { height: 200px; }
+.freq-bound-row { display:flex; align-items:center; gap:4px; margin-bottom:3px; margin-left:84px; }
+.btn-xs { padding:0 5px; font-size:0.72rem; line-height:1.4; }
+.freq-bound-toggle.active { background:#fff3cd; border-color:#ffc107; color:#856404; }
 </style>
 </head>
 <body>
@@ -68,6 +72,12 @@ body { font-size: 0.87rem; }
         </div>
       </div>
     </div>
+    <div id="main-rf-amp-row" class="d-none d-flex align-items-center gap-2 mb-1">
+      <span class="small fw-semibold" style="width:80px;text-align:right">RF amp</span>
+      <input type="number" id="main-rf-amp" class="form-control form-control-sm" style="width:85px" value="200" step="1" min="0">
+      <span class="small text-muted">V</span>
+      <span class="small text-muted" id="main-s-fixed-display"></span>
+    </div>
 
     <div class="section-label">Position</div>
     <div id="knob-x" class="knob-row" data-param="r_x" data-unit="µm"></div>
@@ -81,8 +91,26 @@ body { font-size: 0.87rem; }
 
     <div class="section-label">Secular frequency</div>
     <div id="knob-f1" class="knob-row" data-param="f1" data-unit="MHz"></div>
+    <div id="freq-bound-row-0" class="freq-bound-row d-none">
+      <input type="number" id="fmin-0" class="form-control form-control-sm" style="width:65px" step="0.01" min="0.01" value="0.1">
+      <span class="small text-muted">to</span>
+      <input type="number" id="fmax-0" class="form-control form-control-sm" style="width:65px" step="0.01" min="0.01" value="2.0">
+      <span class="knob-unit">MHz</span>
+    </div>
     <div id="knob-f2" class="knob-row" data-param="f2" data-unit="MHz"></div>
+    <div id="freq-bound-row-1" class="freq-bound-row d-none">
+      <input type="number" id="fmin-1" class="form-control form-control-sm" style="width:65px" step="0.01" min="0.01" value="0.1">
+      <span class="small text-muted">to</span>
+      <input type="number" id="fmax-1" class="form-control form-control-sm" style="width:65px" step="0.01" min="0.01" value="2.0">
+      <span class="knob-unit">MHz</span>
+    </div>
     <div id="knob-f3" class="knob-row" data-param="f3" data-unit="MHz"></div>
+    <div id="freq-bound-row-2" class="freq-bound-row d-none">
+      <input type="number" id="fmin-2" class="form-control form-control-sm" style="width:65px" step="0.01" min="0.01" value="0.1">
+      <span class="small text-muted">to</span>
+      <input type="number" id="fmax-2" class="form-control form-control-sm" style="width:65px" step="0.01" min="0.01" value="2.0">
+      <span class="knob-unit">MHz</span>
+    </div>
 
     <!-- Infeasibility notice -->
     <div id="infeas-box" class="infeas-box mt-2">
@@ -111,7 +139,10 @@ body { font-size: 0.87rem; }
 
   <!-- Right column: display -->
   <div class="col-md-7">
-    <div id="chart-3d"></div>
+    <div class="row g-1 mb-0">
+      <div class="col-8"><div id="chart-3d"></div></div>
+      <div class="col-4"><div id="chart-freq-bar"></div></div>
+    </div>
     <div class="mt-1 small text-muted" id="phys-display"></div>
     <div id="chart-volt" class="mt-2"></div>
     <div class="mt-1">
@@ -187,13 +218,6 @@ body { font-size: 0.87rem; }
   <div class="d-flex gap-1 mb-2">
     <input type="number" id="s-rf-freq" class="form-control form-control-sm" style="width:100px" value="43">
     <span class="align-self-center">MHz</span>
-  </div>
-
-  <div class="section-label" id="s-rf-amp-section">s-Pinned: RF amplitude</div>
-  <div class="d-flex gap-1 mb-2">
-    <input type="number" id="s-rf-amp" class="form-control form-control-sm" style="width:100px" value="200">
-    <span class="align-self-center">V</span>
-    <span class="align-self-center text-muted small" id="s-fixed-display"></span>
   </div>
 
   <div class="section-label">Validation</div>
@@ -671,6 +695,11 @@ let appState = {
   v: null,          // Float64Array
   lastFeasible: null, // {physics, v}
   sFree: true,
+  freqMode: [
+    { bounded: false, f_min: 0.1, f_max: 2.0 },
+    { bounded: false, f_min: 0.1, f_max: 2.0 },
+    { bounded: false, f_min: 0.1, f_max: 2.0 },
+  ],
   settings: {
     ref_dir: [0,1,0], rf_freq_mhz: 43, rf_amp_v: 200,
     step_pos: 1, step_ori: 1, step_freq: 0.05,
@@ -703,30 +732,187 @@ function getWeights(trap) {
   return G;
 }
 
-function physicsToControlTarget(physics, trap, settings, v_current, sFree, sFixed) {
-  // Returns {M_2d, b_arr, G_diag, f_knob, f_full, lb, ub, s_col_removed}
-  const { M_2d, b_arr } = buildConstraintsForPhysics(physics, trap, settings.ref_dir);
-  const G_diag = getWeights(trap);
-  const { lb, ub } = getTrapBounds(trap, settings);
-  const n = trap.n_controls;
-
-  if (!sFree && sFixed !== null) {
-    // s-pinned: remove last column, adjust b
-    const b_red = b_arr.slice();
-    const M_red = M_2d.map(row => row.slice(0, n-1));
-    for (let k = 0; k < 9; k++) b_red[k] -= M_2d[k][n-1] * sFixed;
-    const G_red = G_diag.slice(0, n-1);
-    const lb_red = lb.slice(0, n-1);
-    const ub_red = ub.slice(0, n-1);
-    return { M_2d: M_red, b_arr: b_red, G_diag: G_red, lb: lb_red, ub: ub_red, sFixed, n_eff: n-1 };
-  }
-  return { M_2d, b_arr, G_diag, lb, ub, sFixed: null, n_eff: n };
+function modalHessianCoeffs(p, q) {
+  return [
+    p[0]*q[0], p[1]*q[1], p[2]*q[2],
+    p[0]*q[1]+p[1]*q[0], p[0]*q[2]+p[2]*q[0], p[1]*q[2]+p[2]*q[1],
+  ];
 }
 
-function reassembleV(v_red, sFixed, n) {
-  if (sFixed === null) return v_red;
+function buildModalRow(vech_rows, p, q) {
+  const coeffs = modalHessianCoeffs(p, q);
+  const M_mon = vech_rows[0].length;
+  const row = new Array(M_mon).fill(0.0);
+  for (let ki = 0; ki < 6; ki++)
+    for (let j = 0; j < M_mon; j++) row[j] += coeffs[ki] * vech_rows[ki][j];
+  return row;
+}
+
+// Returns {M_2d (9×n_controls), b_arr (9), boundedModes [{idx, rowIdx, kappa_lo, kappa_hi}]}
+function buildModalConstraintsForPhysics(physics, trap, ref_dir, freqMode) {
+  const A = trap.A;
+  const powers = trap.powers;
+  const L0 = trap.ND_L0_M;
+  const mq = trap.ion_mass / trap.ion_charge;
+  const M_mon = powers.length;
+  const n_controls = trap.n_controls;
+
+  const r_m = physics.r_um.map(v => v * 1e-6);
+  const r_eval = r_m.map(v => v / L0);
+
+  const th = physics.theta * Math.PI / 180, ph = physics.phi * Math.PI / 180;
+  const principal_axis = [Math.sin(th)*Math.cos(ph), Math.sin(th)*Math.sin(ph), Math.cos(th)];
+  const R = rotationFromAxisRefAlpha(principal_axis, ref_dir, physics.alpha);
+
+  const { dx, dy, dz } = buildDerivativeRows(powers, r_eval);
+  const { dxx, dyy, dzz, dxy, dxz, dyz } = buildHessianRows(powers, r_eval);
+  const vech_rows = [dxx, dyy, dzz, dxy, dxz, dyz];
+
+  const L_rows = [];
+  const b_arr = [];
+
+  // Gradient rows (always equalities at 0)
+  L_rows.push(dx); b_arr.push(0.0);
+  L_rows.push(dy); b_arr.push(0.0);
+  L_rows.push(dz); b_arr.push(0.0);
+
+  // Off-diagonal modal rows: (0,1), (0,2), (1,2)
+  for (const [i, j] of [[0,1],[0,2],[1,2]]) {
+    const pi = [R[0][i], R[1][i], R[2][i]];
+    const pj = [R[0][j], R[1][j], R[2][j]];
+    L_rows.push(buildModalRow(vech_rows, pi, pj));
+    b_arr.push(0.0);
+  }
+
+  // Diagonal modal rows
+  const boundedModes = [];
+  for (let i = 0; i < 3; i++) {
+    const pi = [R[0][i], R[1][i], R[2][i]];
+    L_rows.push(buildModalRow(vech_rows, pi, pi));
+    const rowIdx = 6 + i;
+    if (!freqMode[i].bounded) {
+      const omega = 2 * Math.PI * physics.f_MHz[i] * 1e6;
+      b_arr.push(mq * L0 * L0 * omega * omega);
+    } else {
+      b_arr.push(0.0); // coupling row b=0; aux var added in physicsToControlTarget
+      const omega_lo = 2 * Math.PI * freqMode[i].f_min * 1e6;
+      const omega_hi = 2 * Math.PI * freqMode[i].f_max * 1e6;
+      boundedModes.push({
+        idx: i, rowIdx,
+        kappa_lo: mq * L0 * L0 * omega_lo * omega_lo,
+        kappa_hi: mq * L0 * L0 * omega_hi * omega_hi,
+      });
+    }
+  }
+
+  // M = L_rows @ A  (9 × n_controls)
+  const M_2d = zeros2d(9, n_controls);
+  for (let i = 0; i < 9; i++)
+    for (let j = 0; j < n_controls; j++)
+      for (let k = 0; k < M_mon; k++) M_2d[i][j] += L_rows[i][k] * A[k][j];
+
+  return { M_2d, b_arr, boundedModes };
+}
+
+// Compute achieved frequencies (MHz) from solved v, using A and current R
+function computeAchievedFreqs(v, physics, trap, settings) {
+  const A = trap.A;
+  const powers = trap.powers;
+  const L0 = trap.ND_L0_M;
+  const mq = trap.ion_mass / trap.ion_charge;
+  const n_controls = trap.n_controls;
+  const M_mon = powers.length;
+
+  // c = A @ v[:n_controls]
+  const c = new Array(M_mon).fill(0.0);
+  for (let k = 0; k < M_mon; k++)
+    for (let j = 0; j < n_controls; j++) c[k] += A[k][j] * v[j];
+
+  const r_m = physics.r_um.map(x => x * 1e-6);
+  const r_eval = r_m.map(x => x / L0);
+  const { dxx, dyy, dzz, dxy, dxz, dyz } = buildHessianRows(powers, r_eval);
+  const vech_rows = [dxx, dyy, dzz, dxy, dxz, dyz];
+
+  const th = physics.theta * Math.PI / 180, ph = physics.phi * Math.PI / 180;
+  const principal_axis = [Math.sin(th)*Math.cos(ph), Math.sin(th)*Math.sin(ph), Math.cos(th)];
+  let R;
+  try { R = rotationFromAxisRefAlpha(principal_axis, settings.ref_dir, physics.alpha); }
+  catch(e) { return physics.f_MHz.slice(); }
+
+  const freqs = [];
+  for (let i = 0; i < 3; i++) {
+    const pi = [R[0][i], R[1][i], R[2][i]];
+    const coeffs = modalHessianCoeffs(pi, pi);
+    let kappa = 0.0;
+    for (let ki = 0; ki < 6; ki++) kappa += coeffs[ki] * dot(vech_rows[ki], c);
+    // κ_nondim = mq * L0² * ω²  →  ω² = κ / (mq * L0²)
+    const omega2 = Math.max(kappa, 0) / (mq * L0 * L0);
+    freqs.push(Math.sqrt(omega2) / (2 * Math.PI) / 1e6);
+  }
+  return freqs;
+}
+
+function physicsToControlTarget(physics, trap, settings, v_current, sFree, sFixed) {
+  const n = trap.n_controls;
+  const anyBounded = appState.freqMode && appState.freqMode.some(fm => fm.bounded);
+
+  let M_2d, b_arr, boundedModes = [];
+  if (anyBounded) {
+    const res = buildModalConstraintsForPhysics(physics, trap, settings.ref_dir, appState.freqMode);
+    M_2d = res.M_2d; b_arr = res.b_arr; boundedModes = res.boundedModes;
+  } else {
+    const res = buildConstraintsForPhysics(physics, trap, settings.ref_dir);
+    M_2d = res.M_2d; b_arr = res.b_arr;
+  }
+
+  const G_base = Array.from(getWeights(trap));
+  const { lb: lb_base, ub: ub_base } = getTrapBounds(trap, settings);
+  let lb_base_arr = Array.from(lb_base);
+  let ub_base_arr = Array.from(ub_base);
+
+  let M_work, b_work, G_work, lb_work, ub_work, n_eff;
+
+  if (!sFree && sFixed !== null) {
+    // s-pinned: remove last control column first
+    b_work = b_arr.slice();
+    M_work = M_2d.map(row => row.slice(0, n-1));
+    for (let k = 0; k < 9; k++) b_work[k] -= M_2d[k][n-1] * sFixed;
+    G_work = G_base.slice(0, n-1);
+    lb_work = lb_base_arr.slice(0, n-1);
+    ub_work = ub_base_arr.slice(0, n-1);
+    n_eff = n - 1;
+  } else {
+    b_work = b_arr.slice();
+    M_work = M_2d.map(row => row.slice());
+    G_work = G_base.slice();
+    lb_work = lb_base_arr.slice();
+    ub_work = ub_base_arr.slice();
+    n_eff = n;
+    sFixed = null;
+  }
+
+  // Append aux κ columns for bounded modes (AFTER s-column removal)
+  for (const bm of boundedModes) {
+    for (let r = 0; r < 9; r++) M_work[r].push(r === bm.rowIdx ? -1.0 : 0.0);
+    G_work.push(1e-8);
+    lb_work.push(bm.kappa_lo);
+    ub_work.push(bm.kappa_hi);
+  }
+
+  return {
+    M_2d: M_work, b_arr: b_work,
+    G_diag: Float64Array.from(G_work),
+    lb: Float64Array.from(lb_work),
+    ub: Float64Array.from(ub_work),
+    sFixed, n_eff, n_aux: boundedModes.length,
+  };
+}
+
+function reassembleV(v_eff_arr, sFixed, n) {
+  // v_eff_arr has n_eff entries (aux already stripped by caller)
+  if (sFixed === null) return Float64Array.from(v_eff_arr);
   const v = new Float64Array(n);
-  for (let i = 0; i < n-1; i++) v[i] = v_red[i];
+  for (let i = 0; i < n-1; i++) v[i] = v_eff_arr[i];
   v[n-1] = sFixed;
   return v;
 }
@@ -742,15 +928,17 @@ function solveKnob(physics) {
   const settings = appState.settings;
   const n = trap.n_controls;
   const sFixed = getSFixed(settings, trap);
-  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff } = physicsToControlTarget(
+  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff, n_aux } = physicsToControlTarget(
     physics, trap, settings, appState.v, appState.sFree, sFixed);
 
   const v0 = sF !== null ? Array.from(appState.v).slice(0, n-1) : Array.from(appState.v);
-  // Knob objective: min ||W(v - v0)||^2 => f = -G_diag * v0
-  const f_knob = G_diag.map((g, i) => -g * v0[i]);
+  // f: -G*v0 for voltage entries, 0 for aux
+  const f_knob = new Array(n_eff + n_aux).fill(0.0);
+  for (let i = 0; i < n_eff; i++) f_knob[i] = -G_diag[i] * v0[i];
 
   const result = solveBoxEqQP(G_diag, f_knob, M_2d, b_arr, lb, ub);
-  const v_full = reassembleV(result.x, sF, n);
+  const v_eff = Array.from(result.x).slice(0, n_eff);
+  const v_full = reassembleV(v_eff, sF, n);
   return { ...result, x: v_full };
 }
 
@@ -759,13 +947,13 @@ function solveFullTarget(physics) {
   const settings = appState.settings;
   const n = trap.n_controls;
   const sFixed = getSFixed(settings, trap);
-  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff } = physicsToControlTarget(
+  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff, n_aux } = physicsToControlTarget(
     physics, trap, settings, appState.v, appState.sFree, sFixed);
 
-  // Full-target objective: min ||W v||^2 => f = 0
-  const f_full = new Array(n_eff).fill(0.0);
+  const f_full = new Array(n_eff + n_aux).fill(0.0);
   const result = solveBoxEqQP(G_diag, f_full, M_2d, b_arr, lb, ub);
-  const v_full = reassembleV(result.x, sF, n);
+  const v_eff = Array.from(result.x).slice(0, n_eff);
+  const v_full = reassembleV(v_eff, sF, n);
   return { ...result, x: v_full };
 }
 
@@ -774,13 +962,17 @@ function solveOverride(physics, v_current) {
   const settings = appState.settings;
   const n = trap.n_controls;
   const sFixed = getSFixed(settings, trap);
-  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff } = physicsToControlTarget(
+  const { M_2d, b_arr, G_diag, lb, ub, sFixed: sF, n_eff, n_aux } = physicsToControlTarget(
     physics, trap, settings, v_current, appState.sFree, sFixed);
 
   const v0 = sF !== null ? Array.from(v_current).slice(0, n-1) : Array.from(v_current);
-  const f = G_diag.map((g, i) => -g * v0[i]);
-  const v_red = solveOverrideAnalytic(G_diag, f, M_2d, b_arr, v0);
-  return reassembleV(v_red, sF, n);
+  // Extend v0 with zeros for aux vars
+  const v0_aug = new Array(n_eff + n_aux).fill(0.0);
+  for (let i = 0; i < n_eff; i++) v0_aug[i] = v0[i];
+  const f = G_diag.map((g, i) => -g * v0_aug[i]);
+  const v_aug = solveOverrideAnalytic(G_diag, f, M_2d, b_arr, v0_aug);
+  const v_eff = Array.from(v_aug).slice(0, n_eff);
+  return reassembleV(v_eff, sF, n);
 }
 
 function sToRfAmp(s, rf_freq_mhz) {
@@ -799,15 +991,18 @@ const PARAM_CONFIG = [
   { id: 'knob-theta', param: 'theta', idx: -1, label: 'θ', unit: '°',   min: 0.1,  max: 179.9, step_key: 'step_ori' },
   { id: 'knob-phi',   param: 'phi',   idx: -1, label: 'φ', unit: '°',   min: 0,    max: 360,  step_key: 'step_ori' },
   { id: 'knob-alpha', param: 'alpha', idx: -1, label: 'α', unit: '°',   min: 0,    max: 360,  step_key: 'step_ori' },
-  { id: 'knob-f1',    param: 'f_MHz', idx: 0, label: 'ω₁', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq' },
-  { id: 'knob-f2',    param: 'f_MHz', idx: 1, label: 'ω₂', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq' },
-  { id: 'knob-f3',    param: 'f_MHz', idx: 2, label: 'ω₃', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq' },
+  { id: 'knob-f1',    param: 'f_MHz', idx: 0, label: 'ω₁', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq', modeIdx: 0 },
+  { id: 'knob-f2',    param: 'f_MHz', idx: 1, label: 'ω₂', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq', modeIdx: 1 },
+  { id: 'knob-f3',    param: 'f_MHz', idx: 2, label: 'ω₃', unit: 'MHz', min: 0.01, max: 10,   step_key: 'step_freq', modeIdx: 2 },
 ];
 
 function buildKnobUI() {
   PARAM_CONFIG.forEach(cfg => {
     const el = document.getElementById(cfg.id);
     if (!el) return;
+    const boundBtn = cfg.modeIdx !== undefined
+      ? `<button class="btn btn-xs btn-outline-secondary freq-bound-toggle" data-mode="${cfg.modeIdx}" title="Toggle frequency band">≤f≤</button>`
+      : '';
     el.innerHTML = `
       <span class="knob-label">${cfg.label}</span>
       <button class="btn btn-sm btn-outline-secondary btn-pm" data-id="${cfg.id}" data-dir="-1">−</button>
@@ -816,6 +1011,7 @@ function buildKnobUI() {
       <button class="btn btn-sm btn-outline-secondary btn-pm" data-id="${cfg.id}" data-dir="1">+</button>
       <span class="knob-val" id="${cfg.id}-val">0.000</span>
       <span class="knob-unit">${cfg.unit}</span>
+      ${boundBtn}
     `;
   });
 
@@ -993,10 +1189,20 @@ document.getElementById('trap-select').addEventListener('change', (e) => {
 // s mode toggle
 document.getElementById('s-free').addEventListener('change', () => {
   appState.sFree = true;
+  updateMainRFAmpVisibility();
   handleKnobChange(deepCopyPhysics(appState.physics), 'reset');
 });
 document.getElementById('s-pinned').addEventListener('change', () => {
   appState.sFree = false;
+  // Preserve current s by deriving rf_amp from it
+  if (appState.v && appState.trap) {
+    const cur_s = appState.v[appState.trap.n_controls - 1];
+    const amp = sToRfAmp(cur_s, appState.settings.rf_freq_mhz);
+    appState.settings.rf_amp_v = amp;
+    const el = document.getElementById('main-rf-amp');
+    if (el) el.value = amp.toFixed(2);
+  }
+  updateMainRFAmpVisibility();
   updateSFixed();
   handleKnobChange(deepCopyPhysics(appState.physics), 'reset');
 });
@@ -1004,10 +1210,13 @@ document.getElementById('s-pinned').addEventListener('change', () => {
 // Settings listeners
 ['s-dc-lo','s-dc-hi','s-rfdc-lo','s-rfdc-hi','s-s-lo','s-s-hi',
  's-step-pos','s-step-ori','s-step-freq',
- 's-ref-x','s-ref-y','s-ref-z','s-rf-freq','s-rf-amp'].forEach(id => {
+ 's-ref-x','s-ref-y','s-ref-z','s-rf-freq'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('change', onSettingsChange);
 });
+// Main-tab RF amp listener (only active when pinned)
+const mainRfAmpEl = document.getElementById('main-rf-amp');
+if (mainRfAmpEl) mainRfAmpEl.addEventListener('change', onSettingsChange);
 
 function onSettingsChange() {
   readSettings();
@@ -1031,7 +1240,8 @@ function readSettings() {
     parseFloat(document.getElementById('s-ref-z').value) || 0,
   ];
   s.rf_freq_mhz = parseFloat(document.getElementById('s-rf-freq').value) || 43;
-  s.rf_amp_v    = parseFloat(document.getElementById('s-rf-amp').value)  || 200;
+  const rfAmpEl = document.getElementById('main-rf-amp');
+  if (rfAmpEl) s.rf_amp_v = parseFloat(rfAmpEl.value) || 200;
   // Update sliders to match new step sizes
   PARAM_CONFIG.forEach(cfg => {
     const sl = document.getElementById(`${cfg.id}-slider`);
@@ -1043,8 +1253,14 @@ function updateSFixed() {
   const s = appState.settings;
   const omega_mhz = 2 * Math.PI * s.rf_freq_mhz;
   const s_fixed = (s.rf_amp_v * s.rf_amp_v) / (omega_mhz * omega_mhz);
-  document.getElementById('s-fixed-display').textContent =
-    `s = ${s_fixed.toFixed(4)}`;
+  const txt = `s=${s_fixed.toFixed(4)}`;
+  const mainDisp = document.getElementById('main-s-fixed-display');
+  if (mainDisp) mainDisp.textContent = txt;
+}
+
+function updateMainRFAmpVisibility() {
+  const row = document.getElementById('main-rf-amp-row');
+  if (row) row.classList.toggle('d-none', appState.sFree);
 }
 
 // ============================================================
@@ -1056,6 +1272,7 @@ function updateDisplay() {
   updateVoltageTable();
   updateVoltageChart();
   update3DView();
+  updateFreqBarChart();
   updateRFDisplay();
   updatePhysicsDisplay();
 }
@@ -1117,25 +1334,32 @@ function update3DView() {
   } catch(e) { return; }
 
   const [ox, oy, oz] = p.r_um;
-  const scale = 15; // µm scaling for arrows
+  const L_ARROW = 12; // µm, constant for all axes
+  const half = 1.6 * L_ARROW;
   const axes_colors = ['#d9534f', '#5cb85c', '#0275d8'];
   const traces = [];
 
-  // Ion position
+  // Lab origin marker (black)
+  traces.push({
+    type: 'scatter3d', mode: 'markers',
+    x: [0], y: [0], z: [0],
+    marker: { size: 4, color: '#000' }, name: 'Origin', showlegend: false,
+  });
+
+  // Ion position (orange)
   traces.push({
     type: 'scatter3d', mode: 'markers',
     x: [ox], y: [oy], z: [oz],
-    marker: { size: 6, color: '#ff8800' }, name: 'Ion'
+    marker: { size: 6, color: '#ff8800' }, name: 'Ion',
   });
 
-  // Principal axes (arrows: e1, e2, e3 scaled by frequency)
+  // Principal axes — constant length L_ARROW
   for (let col = 0; col < 3; col++) {
     const f = p.f_MHz[col];
-    const s = scale * (f / 1.0); // scale by frequency
     const ex = R[0][col], ey = R[1][col], ez = R[2][col];
     traces.push({
       type: 'scatter3d', mode: 'lines+markers',
-      x: [ox, ox + ex*s], y: [oy, oy + ey*s], z: [oz, oz + ez*s],
+      x: [ox, ox + ex*L_ARROW], y: [oy, oy + ey*L_ARROW], z: [oz, oz + ez*L_ARROW],
       line: { color: axes_colors[col], width: 4 },
       marker: { size: [0, 5], color: axes_colors[col] },
       name: `ω${col+1}=${f.toFixed(2)} MHz`,
@@ -1143,14 +1367,45 @@ function update3DView() {
   }
 
   Plotly.react('chart-3d', traces, {
-    margin: { t: 20, b: 10, l: 10, r: 10 }, height: 320,
+    margin: { t: 20, b: 10, l: 10, r: 10 }, height: 300,
     scene: {
-      xaxis: { title: 'x (µm)', range: [-120, 120] },
-      yaxis: { title: 'y (µm)', range: [-25, 25] },
-      zaxis: { title: 'z (µm)', range: [-25, 25] },
+      xaxis: { title: 'x (µm)', range: [ox - half, ox + half] },
+      yaxis: { title: 'y (µm)', range: [oy - half, oy + half] },
+      zaxis: { title: 'z (µm)', range: [oz - half, oz + half] },
       aspectmode: 'cube',
     },
-    legend: { x: 0, y: 1, font: { size: 10 } }
+    legend: { x: 0, y: 1, font: { size: 10 } },
+  }, { responsive: true, displayModeBar: false });
+}
+
+function updateFreqBarChart() {
+  if (!appState.trap || !appState.v) return;
+  const axes_colors = ['#d9534f', '#5cb85c', '#0275d8'];
+  const achieved = computeAchievedFreqs(appState.v, appState.physics, appState.trap, appState.settings);
+  const labels = ['ω₁', 'ω₂', 'ω₃'];
+  const fm = appState.freqMode;
+
+  const bar_trace = {
+    type: 'bar', x: labels, y: achieved,
+    marker: { color: axes_colors }, showlegend: false,
+  };
+
+  // Bound markers for bounded modes
+  const lo_x = [], lo_y = [], hi_x = [], hi_y = [];
+  for (let i = 0; i < 3; i++) {
+    if (fm[i].bounded) {
+      lo_x.push(labels[i]); lo_y.push(fm[i].f_min);
+      hi_x.push(labels[i]); hi_y.push(fm[i].f_max);
+    }
+  }
+  const mk = { symbol: 'line-ew', size: 14, line: { width: 2, color: '#555' }, color: '#555' };
+  const lo_trace = { type: 'scatter', mode: 'markers', x: lo_x, y: lo_y, marker: mk, showlegend: false };
+  const hi_trace = { type: 'scatter', mode: 'markers', x: hi_x, y: hi_y, marker: mk, showlegend: false };
+
+  Plotly.react('chart-freq-bar', [bar_trace, lo_trace, hi_trace], {
+    margin: { t: 20, b: 30, l: 42, r: 6 }, height: 300,
+    yaxis: { title: 'MHz', rangemode: 'tozero' },
+    showlegend: false,
   }, { responsive: true, displayModeBar: false });
 }
 
@@ -1190,7 +1445,8 @@ function loadTrap(key) {
   const s_hi = bundle.default_s_bounds[1];
   document.getElementById('s-s-hi').value = s_hi.toFixed(4);
   appState.settings.rf_amp_v = bundle.rf_amp_max_v || 600;
-  document.getElementById('s-rf-amp').value = appState.settings.rf_amp_v;
+  const rfAmpMainEl = document.getElementById('main-rf-amp');
+  if (rfAmpMainEl) rfAmpMainEl.value = appState.settings.rf_amp_v;
 
   // Initial physics
   appState.physics = {
@@ -1215,6 +1471,44 @@ function loadTrap(key) {
   updateDisplay();
   document.getElementById('solve-status-display').textContent =
     `Loaded ${key} (n=${bundle.n_controls}, ${res.feasible ? 'ok' : 'infeasible'})`;
+}
+
+// Frequency-bound toggle buttons
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.freq-bound-toggle');
+  if (!btn) return;
+  const mi = parseInt(btn.dataset.mode);
+  appState.freqMode[mi].bounded = !appState.freqMode[mi].bounded;
+  btn.classList.toggle('freq-bound-toggle', true);
+  btn.classList.toggle('active', appState.freqMode[mi].bounded);
+  // Update f_min/f_max from current knob value so bounds start around it
+  if (appState.freqMode[mi].bounded) {
+    const cur = appState.physics.f_MHz[mi];
+    const lo = Math.max(0.01, (cur * 0.5));
+    const hi = cur * 1.5;
+    appState.freqMode[mi].f_min = lo;
+    appState.freqMode[mi].f_max = hi;
+    const fminEl = document.getElementById(`fmin-${mi}`);
+    const fmaxEl = document.getElementById(`fmax-${mi}`);
+    if (fminEl) fminEl.value = lo.toFixed(3);
+    if (fmaxEl) fmaxEl.value = hi.toFixed(3);
+  }
+  document.getElementById(`freq-bound-row-${mi}`).classList.toggle('d-none', !appState.freqMode[mi].bounded);
+  handleKnobChange(deepCopyPhysics(appState.physics), 'knob');
+});
+
+// Frequency bound range inputs
+for (let mi = 0; mi < 3; mi++) {
+  document.getElementById(`fmin-${mi}`).addEventListener('change', e => {
+    appState.freqMode[mi].f_min = Math.max(0.001, parseFloat(e.target.value) || 0.1);
+    e.target.value = appState.freqMode[mi].f_min;
+    if (appState.freqMode[mi].bounded) handleKnobChange(deepCopyPhysics(appState.physics), 'knob');
+  });
+  document.getElementById(`fmax-${mi}`).addEventListener('change', e => {
+    appState.freqMode[mi].f_max = Math.max(0.001, parseFloat(e.target.value) || 2.0);
+    e.target.value = appState.freqMode[mi].f_max;
+    if (appState.freqMode[mi].bounded) handleKnobChange(deepCopyPhysics(appState.physics), 'knob');
+  });
 }
 
 // ============================================================
@@ -1314,6 +1608,7 @@ function init() {
   buildKnobUI();
   readSettings();
   updateSFixed();
+  updateMainRFAmpVisibility();
 
   // Populate trap selector
   const sel = document.getElementById('trap-select');
