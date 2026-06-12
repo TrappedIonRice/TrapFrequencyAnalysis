@@ -71,7 +71,6 @@ def run_reachability_demo(
     time2 = time.time()
     print(f"Total time: {time2 - time1:.2f} seconds")
 
-
     print("Reachability demo summary")
     print("  requested directions:", samples.n_requested)
     print("  successful LP solves:", samples.n_success)
@@ -353,11 +352,99 @@ def run_frequency_demo_multi(
         max_surface_triangles=4000,
         max_scatter_points=10000,
         show=False,
-        save_plotly_html= True,
+        save_plotly_html=True,
     )
     time2 = time.time()
     print(f"Total time: {time2 - time1:.2f} seconds")
 
+
+def run_freq_demo_voltagevary(
+    *,
+    n_samples: int = 10000,
+) -> None:
+    """
+    Overlay 5 voltage-bound variants of 2Dtrap_125_45deg_200exp in frequency space,
+    then open the saved HTML file automatically.
+    """
+    import os as _os
+    import random as _random
+    import pathlib as _pathlib
+
+    time1 = time.time()
+    random_seed = _random.randint(0, 2**31 - 1)
+    print(f"[info] Using random_seed={random_seed}")
+
+    # DC3, DC8, DC13, DC18 are 0-indexed positions 2, 7, 12, 17 in u_bounds
+    _middle = {2, 7, 12, 17}
+
+    def _bounds22(
+        lo: float, hi: float, mid_lo: float | None = None, mid_hi: float | None = None
+    ) -> list:
+        return [
+            (mid_lo, mid_hi) if (mid_lo is not None and i in _middle) else (lo, hi)
+            for i in range(22)
+        ]
+
+    s_bounds = (0.5, 30)
+    _base = {
+        "trap_name": "2Dtrap_125_45deg_200exp",
+        "dc_electrodes": [f"DC{i}" for i in range(1, 21)],
+        "rf_dc_electrodes": ["RF1", "RF2"],
+        "alpha_deg": 0.0,
+        "ion_mass_kg": constants.ion_mass,
+        "ion_charge_c": constants.ion_charge,
+        "poly_is_potential_energy": False,
+    }
+
+    specs = [
+        {**_base, "name": "pm65V", "u_bounds": _bounds22(-65, 65) + [s_bounds]},
+        {**_base, "name": "m20_p95V", "u_bounds": _bounds22(-20, 95) + [s_bounds]},
+        {**_base, "name": "m15_p115V", "u_bounds": _bounds22(-15, 115) + [s_bounds]},
+        {
+            **_base,
+            "name": "m20_p95V_midflip",
+            "u_bounds": _bounds22(-20, 95, mid_lo=-95, mid_hi=20) + [s_bounds],
+        },
+        {
+            **_base,
+            "name": "m15_p115V_midflip",
+            "u_bounds": _bounds22(-15, 115, mid_lo=-115, mid_hi=15) + [s_bounds],
+        },
+    ]
+
+    plot_multi_trap_frequency_space(
+        specs,
+        n_samples=n_samples,
+        random_seed=random_seed,
+        plot_lambda_space=True,
+        output="hz",
+        backend="plotly",
+        density_scale=1.4,
+        show_surface=True,
+        max_surface_triangles=4000,
+        max_scatter_points=10000,
+        show=False,
+        save_plotly_html=True,
+    )
+
+    time2 = time.time()
+    print(f"Total time: {time2 - time1:.2f} seconds")
+
+    html_dir = (
+        _pathlib.Path(__file__).resolve().parent.parent
+        / "plot_multi_trap_frequency_space_htmlViews"
+    )
+    if html_dir.exists():
+        html_files = sorted(
+            html_dir.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+        if html_files:
+            newest = html_files[0]
+            print(f"[info] Opening {newest}")
+            _os.startfile(str(newest))
+
+
 if __name__ == "__main__":
     # run_frequency_demo_single()
-    run_frequency_demo_multi()
+    # run_frequency_demo_multi()
+    run_freq_demo_voltagevary()
