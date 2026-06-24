@@ -1107,47 +1107,76 @@ def main_2():
 
     # RF drive setup
     rf_freq_hz = (43) * 10**6
-    rf_amp_rf1 = 515
-    rf_amp_rf2 = 515
+    rf_amp_rf1 = 655.94
+    rf_amp_rf2 = 655.94
     tv.add_driving("RF", rf_freq_hz, 0.0, {"RF1": rf_amp_rf1, "RF2": rf_amp_rf2})
     x = 14
     outer = 24 - x
     inner = 13 - x
     # DC electrode offsets (v)
+    # dc_offsets = {
+    #     "DC1": outer,
+    #     "DC2": inner,
+    #     "DC3": outer,
+    #     "DC4": outer,
+    #     "DC5": inner,
+    #     "DC6": outer,
+    #     "DC7": outer,
+    #     "DC8": inner,
+    #     "DC9": outer,
+    #     "DC10": outer,
+    #     "DC11": inner,
+    #     "DC12": outer,
+    #     "RF1": -10,
+    #     "RF2": -10,
+    # }
+    Ends = 100.8
+    Centers = 54
+    Mid = -15
     dc_offsets = {
-        "DC1": outer,
-        "DC2": inner,
-        "DC3": outer,
-        "DC4": outer,
-        "DC5": inner,
-        "DC6": outer,
-        "DC7": outer,
-        "DC8": inner,
-        "DC9": outer,
-        "DC10": outer,
-        "DC11": inner,
-        "DC12": outer,
-        "RF1": -10,
-        "RF2": -10,
+        "DC1": 64.61,
+        "DC2": 35.33,
+        "DC3": -15.0,
+        "DC4": 34.07,
+        "DC5": 64.45,
+        "DC6": 64.263,
+        "DC7": 33.92,
+        "DC8": -15.0,
+        "DC9": 35.18,
+        "DC10": 64.74,
+        "DC11": 64.37,
+        "DC12": 34.11,
+        "DC13": -15.0,
+        "DC14": 35.16,
+        "DC15": 64.67,
+        "DC16": 64.66,
+        "DC17": 35.22,
+        "DC18": -15.0,
+        "DC19": 33.85,
+        "DC20": 64.33,
+        "RF1": 17.66,
+        "RF2": 17.66,
     }
 
     # dc_offsets = {
-    #     "DC1": 2.0,
-    #     "DC2": 1.0,
-    #     "DC3": 0.0,
-    #     "DC4": 1.0,
-    #     "DC5": 2.0,
-    #     "DC6": 2.0,
-    #     "DC7": 1.0,
-    #     "DC8": 0.0,
-    #     "DC9": 1.0,
-    #     "DC10": 2.0,
+    #     "DC1": 1.57,
+    #     "DC2": 2.51,
+    #     "DC3": -0.182,
+    #     "DC4": 2.34,
+    #     "DC5": 1.57,
+    #     "DC6": 1.51,
+    #     "DC7": 2.30,
+    #     "DC8": -0.28,
+    #     "DC9": 2.46,
+    #     "DC10": 1.62,
+    #     "RF1": -7.69,
+    #     "RF2": -7.73,
     # }
 
     for el, volts in dc_offsets.items():
         tv.set_amp(tv.dc_key, el, volts)
 
-    sim = Simulation("InnTrapFine", tv)
+    sim = Simulation("2Dtrap_125_45deg_200exp", tv)
 
     # Build fits, equilibrium, and single-ion modes
     sim._smoke_test_new_stack(n_ions=1, poly_deg=4)
@@ -1247,7 +1276,7 @@ def main_2():
 
     eq_pos = sim.ion_equilibrium_positions.get(1)
     print("Single-ion equilibrium position (m):", eq_pos)
-    
+
     fig1 = sim.plot_total_voltage_plane_cuts()
     fig = sim.plot_total_voltage_along_axes()
     plt.show()

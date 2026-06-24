@@ -227,7 +227,9 @@ class Trapping_Vars:
 
     def add_twist_dc(self, twist: float) -> None:
         """
-        Apply 'twist' (in volts) to DC electrodes only: subtract from every DC* electrode on the DC drive.
+        Add `twist` volts to every DC* electrode on the DC drive, and subtract `twist` from RF1 and RF2
+        on the same DC drive. This biases all DC blades relative to the RF blades, rotating the potential
+        in the transverse plane (hence "twist").
         """
         ea = self.Var_dict[self.dc_key]
         for el in ea.amplitudes.keys():
