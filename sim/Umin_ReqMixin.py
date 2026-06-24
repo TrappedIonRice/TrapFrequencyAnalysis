@@ -687,7 +687,7 @@ class Umin_ReqMixin:
                 constants.ion_locations_intial_guess[num_ions]
             ).flatten()
             init_guess_flat += np.random.uniform(
-                -1.0e-6, 1.0e-6, size=init_guess_flat.shape
+                -0.05, 0.05, size=init_guess_flat.shape
             )
         if intial_guess is not None:
             init_guess_flat = intial_guess.flatten()
@@ -703,12 +703,12 @@ class Umin_ReqMixin:
             jac=self.get_U_Grad_using_polyfit_dimensionless,  # <-- pass the gradient
             bounds=bounds,
             options={
-                # "gtol": 1e-20,
-                "gtol": 1e-7,  # tighter gradient tolerance
-                "ftol": 1e-7,  # tighter func change threshold
+                "gtol": 1e-20,
+                # "gtol": 1e-7,  # tighter gradient tolerance
+                "ftol": 1e-20,  # tighter func change threshold
                 "disp": False,
-                "maxiter": 10000,
-                "maxfun": 100000,
+                "maxiter": 1000000,
+                "maxfun": 10000000,
             },
         )
         # print("Exit message:", result.message)

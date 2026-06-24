@@ -39,30 +39,30 @@ if __name__ == "__main__":
     # Both RF blades are driven at the same amplitude for a symmetric pseudopotential.
     tv.add_driving("RF", 43_000_000, 0.0, {"RF1": 892.76, "RF2": 892.76})
 
-    # # DC voltages via structured helpers:
-    # #   add_twist_dc(twist)  — adds `twist` V to all DC* electrodes, subtracts from RF1/RF2
-    # #                          on the DC drive; rotates the transverse potential
-    # #   add_endcaps_dc(v)    — adds `v` V to the axial endcap electrodes (DC1, DC5, DC6, DC10)
-    # #                          to provide axial confinement
-    # tv.add_twist_dc(3.275)
-    # tv.add_endcaps_dc(5.0)
+    # DC voltages via structured helpers:
+    #   add_twist_dc(twist)  — adds `twist` V to all DC* electrodes, subtracts from RF1/RF2
+    #                          on the DC drive; rotates the transverse potential
+    #   add_endcaps_dc(v)    — adds `v` V to the axial endcap electrodes (DC1, DC5, DC6, DC10)
+    #                          to provide axial confinement
+    tv.add_twist_dc(3.275)
+    tv.add_endcaps_dc(5.0)
 
-    # # DC bias on the RF blades (RF1, RF2 on the DC drive).
-    # # Non-zero values shift the ion equilibrium in the transverse (y-z) plane.
-    # tv.set_amp(tv.dc_key, "RF1", 0.0)
-    # tv.set_amp(tv.dc_key, "RF2", 0.0)
+    # DC bias on the RF blades (RF1, RF2 on the DC drive).
+    # Non-zero values shift the ion equilibrium in the transverse (y-z) plane.
+    tv.set_amp(tv.dc_key, "RF1", -3.0)
+    tv.set_amp(tv.dc_key, "RF2", -3.0)
 
-    # -------------------------------------------------------------------------
-    # [ALTERNATE] Set every DC electrode voltage explicitly instead of using helpers.
-    # Uncomment this block and comment out the two helper calls above.
-    # -------------------------------------------------------------------------
-    dc_map = {
-        "DC1": -0.31, "DC2": 4.77, "DC3": -1.22, "DC4": 4.77, "DC5": -0.26,
-        "DC6": -0.31, "DC7": 4.77, "DC8": -1.22, "DC9": 4.77, "DC10": -0.26,
-        "RF1": -7.74, "RF2": -7.74,  # DC bias on RF blades
-    }
-    for electrode, volts in dc_map.items():
-        tv.set_amp(tv.dc_key, electrode, volts)
+    # # -------------------------------------------------------------------------
+    # # [ALTERNATE] Set every DC electrode voltage explicitly instead of using helpers.
+    # # Uncomment this block and comment out the two helper calls above.
+    # # -------------------------------------------------------------------------
+    # dc_map = {
+    #     "DC1": -0.31, "DC2": 4.77, "DC3": -1.22, "DC4": 4.77, "DC5": -0.26,
+    #     "DC6": -0.31, "DC7": 4.77, "DC8": -1.22, "DC9": 4.77, "DC10": -0.26,
+    #     "RF1": -7.74, "RF2": -7.74,  # DC bias on RF blades
+    # }
+    # for electrode, volts in dc_map.items():
+    #     tv.set_amp(tv.dc_key, electrode, volts)
 
     # -------------------------------------------------------------------------
     # [ALTERNATE TRAP] 2Dtrap_125_45deg_200exp — 20 DC electrodes + RF1, RF2
