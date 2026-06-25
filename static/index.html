@@ -35,6 +35,9 @@ body { font-size: 0.87rem; }
 .freq-bound-row { display:flex; align-items:center; gap:4px; margin-bottom:3px; margin-left:84px; }
 .btn-xs { padding:0 5px; font-size:0.72rem; line-height:1.4; }
 .freq-bound-toggle.active { background:#fff3cd; border-color:#ffc107; color:#856404; }
+.short-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+.short-label { font-weight:600; font-size:0.82rem; white-space:nowrap; min-width:60px; }
+.short-electrode-sel { font-family:monospace; font-size:0.82rem; }
 </style>
 </head>
 <body>
@@ -50,6 +53,7 @@ body { font-size: 0.87rem; }
 <ul class="nav nav-tabs" id="mainTabs">
   <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-main">Main</a></li>
   <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Settings</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-shorts">Shorts</a></li>
 </ul>
 
 <div class="tab-content">
@@ -226,6 +230,27 @@ body { font-size: 0.87rem; }
 </div>
 </div>
 </div><!-- /tab-settings -->
+
+<!-- ===== SHORTS TAB ===== -->
+<div class="tab-pane fade" id="tab-shorts">
+  <div class="row">
+    <div class="col-md-8">
+      <p class="text-muted small mt-1">
+        Tie electrodes to the same voltage. Each short forces a group of electrodes to share one value during the solve.
+      </p>
+      <button class="btn btn-sm btn-outline-primary mb-3" id="btn-add-short">+ Add Voltage Short</button>
+      <div id="shorts-list"></div>
+      <div id="shorts-error" class="alert alert-danger py-1 small mt-2 d-none"></div>
+    </div>
+    <div class="col-md-4">
+      <div class="section-label">How it works</div>
+      <p class="text-muted small">
+        Shorts add equality constraints to the optimizer: all electrodes in a group are forced to the same voltage.
+        Bounds still apply to each electrode individually. Shorts are cleared when you change traps.
+      </p>
+    </div>
+  </div>
+</div><!-- /tab-shorts -->
 </div><!-- /tab-content -->
 </div><!-- /container -->
 
@@ -706,7 +731,9 @@ let appState = {
     dc_lo: -500, dc_hi: 500, rfdc_lo: -50, rfdc_hi: 50, s_lo: 0
   },
   infeasible: false,
+  shorts: [],       // [{id, electrodeIdxs:[]}]
 };
+let nextShortId = 0;
 
 function getTrapBounds(trap, settings) {
   const n = trap.n_controls;
@@ -730,6 +757,34 @@ function getWeights(trap) {
   const G = new Float64Array(n).fill(1.0);
   G[n-1] = W_S * W_S;
   return G;
+}
+
+// Build extra equality-constraint rows that enforce voltage shorts.
+// Returns {M_rows: 2D array (k × n_cols), b_rows: array(k)}.
+// For a short group [i0, i1, i2, ...], emits rows u[i0]-u[i1]=0, u[i1]-u[i2]=0, …
+function buildShortConstraintRows(shorts, n_cols) {
+  const M_rows = [], b_rows = [];
+  for (const sh of shorts) {
+    const idxs = sh.electrodeIdxs;
+    for (let p = 0; p < idxs.length - 1; p++) {
+      const row = new Array(n_cols).fill(0.0);
+      row[idxs[p]]     = +1.0;
+      row[idxs[p + 1]] = -1.0;
+      M_rows.push(row);
+      b_rows.push(0.0);
+    }
+  }
+  return { M_rows, b_rows };
+}
+
+// Returns the id of the short that already contains proposedIdx, or null.
+// Pass excludingShortId to ignore the short being edited.
+function shortConflictCheck(shorts, proposedIdx, excludingShortId) {
+  for (const sh of shorts) {
+    if (sh.id === excludingShortId) continue;
+    if (sh.electrodeIdxs.includes(proposedIdx)) return sh.id;
+  }
+  return null;
 }
 
 function modalHessianCoeffs(p, q) {
@@ -897,6 +952,18 @@ function physicsToControlTarget(physics, trap, settings, v_current, sFree, sFixe
     G_work.push(1e-8);
     lb_work.push(bm.kappa_lo);
     ub_work.push(bm.kappa_hi);
+  }
+
+  // Inject voltage-short equality constraints.
+  // Short electrode indices reference the full control vector; since we only allow
+  // DC/RF-DC electrodes (not s), they are valid in both free and pinned-s modes.
+  if (appState.shorts && appState.shorts.length > 0) {
+    const n_cols = M_work[0].length; // n_eff + n_aux
+    const { M_rows, b_rows } = buildShortConstraintRows(appState.shorts, n_cols);
+    for (let r = 0; r < M_rows.length; r++) {
+      M_work.push(M_rows[r]);
+      b_work.push(b_rows[r]);
+    }
   }
 
   return {
@@ -1264,6 +1331,166 @@ function updateMainRFAmpVisibility() {
 }
 
 // ============================================================
+// SECTION 5b: VOLTAGE SHORTS UI
+// ============================================================
+
+function renderShortsTab() {
+  const trap = appState.trap;
+  const listEl = document.getElementById('shorts-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  if (!trap) {
+    listEl.innerHTML = '<p class="text-muted small">Load a trap first.</p>';
+    return;
+  }
+
+  // Electrode options: all controls except 's' (last entry)
+  const names = trap.control_names.slice(0, trap.n_controls - 1); // exclude s
+
+  if (appState.shorts.length === 0) {
+    listEl.innerHTML = '<p class="text-muted small">No shorts defined. Click "+ Add Voltage Short".</p>';
+    return;
+  }
+
+  appState.shorts.forEach((sh, si) => {
+    const row = document.createElement('div');
+    row.className = 'short-row';
+    row.dataset.shortId = sh.id;
+
+    const label = document.createElement('span');
+    label.className = 'short-label';
+    label.textContent = `Short #${si + 1}`;
+    row.appendChild(label);
+
+    // One dropdown per already-selected electrode
+    sh.electrodeIdxs.forEach((eIdx, pi) => {
+      const sel = document.createElement('select');
+      sel.className = 'form-select form-select-sm short-electrode-sel';
+      sel.style.width = '90px';
+      sel.dataset.shortId = sh.id;
+      sel.dataset.slotIdx = pi;
+      names.forEach((name, ni) => {
+        const opt = document.createElement('option');
+        opt.value = ni;
+        opt.textContent = name;
+        if (ni === eIdx) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      row.appendChild(sel);
+    });
+
+    // "+" button to add another electrode slot
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-xs btn-outline-secondary';
+    addBtn.textContent = '+';
+    addBtn.title = 'Add electrode to this short';
+    addBtn.dataset.shortId = sh.id;
+    addBtn.dataset.action = 'add-slot';
+    row.appendChild(addBtn);
+
+    // "× Delete" button
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-xs btn-outline-danger ms-2';
+    delBtn.textContent = '× Delete';
+    delBtn.dataset.shortId = sh.id;
+    delBtn.dataset.action = 'delete-short';
+    row.appendChild(delBtn);
+
+    listEl.appendChild(row);
+  });
+}
+
+function showShortsError(msg) {
+  const el = document.getElementById('shorts-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('d-none');
+  setTimeout(() => el.classList.add('d-none'), 4000);
+}
+
+// "Add Voltage Short" button
+document.getElementById('btn-add-short').addEventListener('click', () => {
+  if (!appState.trap) { showShortsError('Load a trap first.'); return; }
+  appState.shorts.push({ id: nextShortId++, electrodeIdxs: [] });
+  renderShortsTab();
+});
+
+// Delegated handler for shorts-list interactions
+document.getElementById('shorts-list').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const shortId = parseInt(btn.dataset.shortId);
+  const sh = appState.shorts.find(s => s.id === shortId);
+  if (!sh) return;
+
+  if (btn.dataset.action === 'delete-short') {
+    appState.shorts = appState.shorts.filter(s => s.id !== shortId);
+    renderShortsTab();
+    handleKnobChange(deepCopyPhysics(appState.physics), 'knob');
+    return;
+  }
+
+  if (btn.dataset.action === 'add-slot') {
+    const trap = appState.trap;
+    const names = trap.control_names.slice(0, trap.n_controls - 1);
+    // Pick the first electrode not already used in any short
+    let candidateIdx = null;
+    for (let ni = 0; ni < names.length; ni++) {
+      if (shortConflictCheck(appState.shorts, ni, null) === null &&
+          !sh.electrodeIdxs.includes(ni)) {
+        candidateIdx = ni;
+        break;
+      }
+    }
+    if (candidateIdx === null) {
+      showShortsError('All electrodes are already used in a short.');
+      return;
+    }
+    // Check conflict for this short group itself (electrode already in another short)
+    const conflictId = shortConflictCheck(appState.shorts, candidateIdx, shortId);
+    if (conflictId !== null) {
+      const si = appState.shorts.findIndex(s => s.id === conflictId) + 1;
+      showShortsError(`Electrode already belongs to Short #${si}. Each electrode can only be in one short.`);
+      return;
+    }
+    sh.electrodeIdxs.push(candidateIdx);
+    renderShortsTab();
+    handleKnobChange(deepCopyPhysics(appState.physics), 'knob');
+  }
+});
+
+// Delegated handler for electrode dropdown changes
+document.getElementById('shorts-list').addEventListener('change', e => {
+  const sel = e.target.closest('select[data-short-id]');
+  if (!sel) return;
+  const shortId = parseInt(sel.dataset.shortId);
+  const slotIdx = parseInt(sel.dataset.slotIdx);
+  const newIdx = parseInt(sel.value);
+  const sh = appState.shorts.find(s => s.id === shortId);
+  if (!sh) return;
+
+  // Conflict check: another short already owns newIdx?
+  const conflictId = shortConflictCheck(appState.shorts, newIdx, shortId);
+  if (conflictId !== null) {
+    const si = appState.shorts.findIndex(s => s.id === conflictId) + 1;
+    showShortsError(`Electrode already belongs to Short #${si}. Each electrode can only be in one short.`);
+    // Revert dropdown visually
+    sel.value = sh.electrodeIdxs[slotIdx];
+    return;
+  }
+  // Conflict within the same short (duplicate slot)?
+  if (sh.electrodeIdxs.some((v, i) => i !== slotIdx && v === newIdx)) {
+    showShortsError('That electrode is already in this short group.');
+    sel.value = sh.electrodeIdxs[slotIdx];
+    return;
+  }
+
+  sh.electrodeIdxs[slotIdx] = newIdx;
+  handleKnobChange(deepCopyPhysics(appState.physics), 'knob');
+});
+
+// ============================================================
 // SECTION 6: DISPLAY UPDATES
 // ============================================================
 
@@ -1440,6 +1667,8 @@ function loadTrap(key) {
   const bundle = window.TRAP_BUNDLES[key];
   appState.trap = bundle;
   appState.trapKey = key;
+  appState.shorts = [];
+  renderShortsTab();
 
   // Update s-hi bound — use exported s_max (supports traps that need high RF amplitude)
   const s_hi = bundle.default_s_bounds[1];
@@ -1595,6 +1824,51 @@ function runValidation() {
   appState.trap = saved_trap;
   appState.settings = saved_settings;
 
+  // --- Voltage-short self-test ---
+  // Pick the first loaded bundle and verify that adding a short between
+  // electrode 0 and electrode 1 makes their solved voltages equal.
+  lines.push('\n=== Voltage-short constraint test ===');
+  const firstKey = Object.keys(bundles)[0];
+  if (firstKey) {
+    const tb = bundles[firstKey];
+    const gt0 = tb.golden_tests[0];
+    const phys = {
+      r_um: gt0.r_um,
+      theta: Math.acos(gt0.principal_axis[2]) * 180 / Math.PI,
+      phi: Math.atan2(gt0.principal_axis[1], gt0.principal_axis[0]) * 180 / Math.PI,
+      alpha: gt0.alpha_deg,
+      f_MHz: gt0.freqs_hz.map(f => f / 1e6),
+    };
+    appState.trap = tb;
+    appState.settings.ref_dir = gt0.ref_dir;
+    // Save and override shorts with a single short: electrode 0 = electrode 1
+    const saved_shorts = appState.shorts;
+    appState.shorts = [{ id: 9999, electrodeIdxs: [0, 1] }];
+    try {
+      const res_short = solveFullTarget(phys);
+      if (res_short.feasible) {
+        const v0 = res_short.x[0], v1 = res_short.x[1];
+        const equal = Math.abs(v0 - v1) < 1e-4;
+        if (equal) {
+          lines.push(`  ✓ Short DC[0]=DC[1] enforced: v=${v0.toFixed(4)} V`);
+          pass++;
+        } else {
+          lines.push(`  ✗ Short not enforced: v[0]=${v0.toFixed(4)}, v[1]=${v1.toFixed(4)}`);
+          fail++;
+        }
+      } else {
+        lines.push(`  ✗ Short solve infeasible`);
+        fail++;
+      }
+    } catch(e) {
+      lines.push(`  ✗ Short solve threw: ${e.message}`);
+      fail++;
+    }
+    appState.shorts = saved_shorts;
+    appState.trap = saved_trap;
+    appState.settings = saved_settings;
+  }
+
   lines.push(`\nTotal: ${pass} passed, ${fail} failed`);
   out.textContent = lines.join('\n');
   console.log(lines.join('\n'));
@@ -1628,6 +1902,7 @@ function init() {
   } else {
     document.getElementById('solve-status-display').textContent =
       'No bundles loaded. Run: python export_bundles.py';
+    renderShortsTab();
   }
 }
 
