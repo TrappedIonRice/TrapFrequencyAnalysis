@@ -664,7 +664,7 @@ class Umin_ReqMixin:
                     grad[i] += diff / (1e-12**3)
 
                 else:
-                    grad[i] += diff / (r**3)
+                    grad[i] -= diff / (r**3)
 
         # Trap gradient (evaluate using SI positions)
         for i in range(n):
@@ -687,7 +687,7 @@ class Umin_ReqMixin:
                 constants.ion_locations_intial_guess[num_ions]
             ).flatten()
             init_guess_flat += np.random.uniform(
-                -0.05, 0.05, size=init_guess_flat.shape
+                -0.001, 0.001, size=init_guess_flat.shape
             )
         if intial_guess is not None:
             init_guess_flat = intial_guess.flatten()
@@ -703,12 +703,12 @@ class Umin_ReqMixin:
             jac=self.get_U_Grad_using_polyfit_dimensionless,  # <-- pass the gradient
             bounds=bounds,
             options={
-                "gtol": 1e-20,
+                "gtol": 1e-16,
                 # "gtol": 1e-7,  # tighter gradient tolerance
-                "ftol": 1e-20,  # tighter func change threshold
-                "disp": False,
-                "maxiter": 1000000,
-                "maxfun": 10000000,
+                "ftol": 1e-16,  # tighter func change threshold
+                "disp": True,
+                "maxiter": 1000,
+                "maxfun": 100000,
             },
         )
         # print("Exit message:", result.message)
@@ -741,7 +741,7 @@ class Umin_ReqMixin:
         # U_test = self.get_U_using_polyfit_dimensionless(init_guess)
         U_min = np.inf
         U_eq = None
-        for i in range(2):
+        for i in range(15):
             U_eqi, U_fini = self.find_U_minimum(num_ions)
             if U_fini < U_min:
                 U_min = U_fini

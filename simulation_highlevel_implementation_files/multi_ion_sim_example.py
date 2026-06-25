@@ -18,7 +18,7 @@ from sim.simulation import Simulation
 from trapping_variables import Trapping_Vars
 
 # Number of ions — change this to run a different chain length.
-N_IONS = 7
+N_IONS = 13
 
 
 if __name__ == "__main__":
@@ -33,19 +33,19 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------
     tv = Trapping_Vars()
 
-    tv.add_driving("RF", 25_500_000, 0.0, {"RF1": 500, "RF2": 500})
+    tv.add_driving("RF", 25_500_000, 0.0, {"RF1": 536.0, "RF2": 536.0})
 
     # DC voltages via structured helpers:
     #   add_twist_dc(twist)  — adds `twist` V to all DC electrodes, subtracts from RF1/RF2
     #                          on the DC drive; rotates the transverse potential
     #   add_endcaps_dc(v)    — adds `v` V to the axial endcap electrodes (DC1, DC5, DC6, DC10)
     #                          to provide axial confinement
-    tv.add_twist_dc(1.275)
-    tv.add_endcaps_dc(2.0)
+    tv.add_twist_dc(-2)
+    tv.add_endcaps_dc(3)
 
     # DC bias on the RF blades (RF1, RF2 on the DC drive).
-    tv.set_amp(tv.dc_key, "RF1", 0)
-    tv.set_amp(tv.dc_key, "RF2", 0)
+    # tv.set_amp(tv.dc_key, "RF1", 2)
+    # tv.set_amp(tv.dc_key, "RF2", 2)
 
 
 
