@@ -18,7 +18,7 @@ from sim.simulation import Simulation
 from trapping_variables import Trapping_Vars
 
 # Number of ions — change this to run a different chain length.
-N_IONS = 13
+N_IONS = 15
 
 
 if __name__ == "__main__":
