@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     # RF drive: tv.add_driving(label, frequency_Hz, phase_rad, {electrode: amplitude_V})
     # Both RF blades are driven at the same amplitude for a symmetric pseudopotential.
-    tv.add_driving("RF", 43_000_000, 0.0, {"RF1": 892.76, "RF2": 892.76})
+    tv.add_driving("RF", 25_500_000, 0.0, {"RF1": 600, "RF2": 600})
 
     # DC voltages via structured helpers:
     #   add_twist_dc(twist)  — adds `twist` V to all DC* electrodes, subtracts from RF1/RF2
@@ -45,12 +45,12 @@ if __name__ == "__main__":
     #   add_endcaps_dc(v)    — adds `v` V to the axial endcap electrodes (DC1, DC5, DC6, DC10)
     #                          to provide axial confinement
     tv.add_twist_dc(3.275)
-    tv.add_endcaps_dc(5.0)
+    tv.add_endcaps_dc(3.0)
 
-    # DC bias on the RF blades (RF1, RF2 on the DC drive).
-    # Non-zero values shift the ion equilibrium in the transverse (y-z) plane.
-    tv.set_amp(tv.dc_key, "RF1", -3.0)
-    tv.set_amp(tv.dc_key, "RF2", -3.0)
+    # # DC bias on the RF blades (RF1, RF2 on the DC drive).
+    # # Non-zero values shift the ion equilibrium in the transverse (y-z) plane.
+    # tv.set_amp(tv.dc_key, "RF1", -3.0)
+    # tv.set_amp(tv.dc_key, "RF2", -3.0)
 
     # # -------------------------------------------------------------------------
     # # [ALTERNATE] Set every DC electrode voltage explicitly instead of using helpers.
@@ -70,14 +70,14 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------
     # tv = Trapping_Vars()
     # tv.add_driving("RF", 43_000_000, 0.0, {"RF1": 655.94, "RF2": 655.94})
-    #
-    # add_endcaps_mid_center_5E applies three voltage levels across the 20 DC electrodes:
-    #   endcaps — DC1,5,6,10,11,15,16,20  (axial ends)
-    #   mid     — DC3,8,13,18             (axial midpoints)
-    #   center  — DC2,4,7,9,12,14,17,19  (transverse center ring)
-    # tv.add_endcaps_mid_center_5E(endcaps=100.8, mid=-15.0, center=54.0)
+    
+    # # # add_endcaps_mid_center_5E applies three voltage levels across the 20 DC electrodes:
+    # # #   endcaps — DC1,5,6,10,11,15,16,20  (axial ends)
+    # # #   mid     — DC3,8,13,18             (axial midpoints)
+    # # #   center  — DC2,4,7,9,12,14,17,19  (transverse center ring)
+    # # tv.add_endcaps_mid_center_5E(endcaps=100.8, mid=-15.0, center=54.0)
 
-    # Or set every electrode (including RF DC bias) explicitly:
+    # # Or set every electrode (including RF DC bias) explicitly:
     # dc_map_2d = {
     #     "DC1":  64.61, "DC2":  35.33, "DC3":  -15.0, "DC4":  34.07, "DC5":  64.45,
     #     "DC6":  64.26, "DC7":  33.92, "DC8":  -15.0, "DC9":  35.18, "DC10": 64.74,
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     #     "RF1":  17.66, "RF2":  17.66,  # DC bias on RF blades
     # }
     # for electrode, volts in dc_map_2d.items():
-    #     tv2.set_amp(tv2.dc_key, electrode, volts)
+    #     tv.set_amp(tv.dc_key, electrode, volts)
 
     # -------------------------------------------------------------------------
     # Build the simulation and run the full forward pipeline

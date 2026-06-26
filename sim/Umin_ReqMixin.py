@@ -706,7 +706,7 @@ class Umin_ReqMixin:
                 "gtol": 1e-16,
                 # "gtol": 1e-7,  # tighter gradient tolerance
                 "ftol": 1e-16,  # tighter func change threshold
-                "disp": True,
+                "disp": False,
                 "maxiter": 1000,
                 "maxfun": 100000,
             },
@@ -741,7 +741,7 @@ class Umin_ReqMixin:
         # U_test = self.get_U_using_polyfit_dimensionless(init_guess)
         U_min = np.inf
         U_eq = None
-        for i in range(15):
+        for i in range(3):
             U_eqi, U_fini = self.find_U_minimum(num_ions)
             if U_fini < U_min:
                 U_min = U_fini
